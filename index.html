@@ -1,0 +1,2089 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Análise de Consumo de Água · Mart Minas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://unpkg.com/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
+<style>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --void:  #05070f;
+  --base:  #0b0e1c;
+  --panel: #10152a;
+  --panel2:#151c34;
+  --rim:   #1e2845;
+  --rim2:  #2a375e;
+  --ice:   #e8f0ff;
+  --mist:  #8899cc;
+  --fog:   #4a5880;
+  --neon:  #3d7fff;
+  --neon2: #00c9ff;
+  --hot:   #ff4b6e;
+  --warm:  #ffb347;
+  --mint:  #00e59b;
+  --font-display: 'Bebas Neue', sans-serif;
+  --font-ui:      'Outfit', sans-serif;
+}
+
+html { scroll-behavior: smooth; }
+body {
+  background: var(--void);
+  color: var(--ice);
+  font-family: var(--font-ui);
+  font-size: 14px;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+body::before {
+  content: '';
+  position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+  opacity: 0.35;
+}
+
+/* ─── TOPBAR ─── */
+.topbar {
+  position: sticky; top: 0; z-index: 100;
+  background: rgba(5,7,15,0.88);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--rim);
+  padding: 0 32px;
+  display: flex; align-items: center; justify-content: space-between;
+  height: 60px;
+}
+.topbar-left { display: flex; align-items: center; gap: 16px; }
+.brand {
+  font-family: var(--font-display);
+  font-size: 26px; letter-spacing: 2px;
+  background: linear-gradient(90deg, var(--neon), var(--neon2));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+}
+.brand-sep { width: 1px; height: 28px; background: var(--rim2); }
+.brand-sub { font-size: 12px; color: var(--fog); font-weight: 500; text-transform: uppercase; letter-spacing: 1px; }
+.topbar-right { display: flex; align-items: center; gap: 12px; }
+.status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--mint); box-shadow: 0 0 8px var(--mint); animation: pulse-dot 2s infinite; }
+@keyframes pulse-dot { 0%,100%{opacity:1} 50%{opacity:0.4} }
+.status-label { font-size: 11px; color: var(--fog); }
+.status-dot.off { background: var(--fog); box-shadow: none; animation: none; }
+
+/* ─── UPLOAD BUTTONS ─── */
+.upload-btn {
+  display: flex; align-items: center; gap: 7px;
+  background: linear-gradient(135deg, var(--neon), var(--neon2));
+  color: white; border: none; padding: 8px 18px; border-radius: 8px;
+  font-family: var(--font-ui); font-size: 12px; font-weight: 600;
+  cursor: pointer; letter-spacing: 0.5px; transition: all 0.2s;
+  text-transform: uppercase;
+}
+.upload-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 20px rgba(61,127,255,0.4); }
+.upload-btn.green { background: linear-gradient(135deg,var(--mint),#00b8a9); color:#001a12; }
+.upload-btn.green:hover { box-shadow: 0 4px 20px rgba(0,229,155,0.3); }
+.upload-btn.ghost { background: transparent; border: 1px solid var(--rim2); color: var(--fog); }
+.upload-btn.ghost:hover { border-color: var(--hot); color: var(--hot); box-shadow: none; transform: none; }
+.upload-btn.gold { background: linear-gradient(135deg, #00875f, #00b17a); color: white; }
+.upload-btn.gold:hover { box-shadow: 0 4px 20px rgba(0,177,122,0.35); }
+#xlsx-input { display: none; }
+
+/* ─── COLUNAS DE CONSUMO (só aparecem se HAS_CONSUMO = true) ─── */
+body:not(.has-consumo) .col-consumo { display: none !important; }
+body:not(.has-consumo) .opt-consumo { display: none !important; }
+.tag-cons { background: rgba(0,201,255,.15); color: var(--neon2); border: 1px solid rgba(0,201,255,.3); }
+
+/* ─── EMPTY STATE ─── */
+.empty-state {
+  padding: 80px 36px; text-align: center;
+  background: var(--panel); border: 1px solid var(--rim);
+  border-radius: 14px; margin-bottom: 20px;
+}
+.empty-icon-big { font-size: 3.5rem; display: block; margin-bottom: 16px; opacity: .5; }
+.empty-text {
+  font-family: var(--font-display); font-size: 22px; letter-spacing: 1.5px;
+  color: var(--mist); margin-bottom: 6px;
+}
+.empty-sub { font-size: 12px; color: var(--fog); }
+.empty-sub b { color: var(--neon2); }
+
+#status-bar { font-size: 12px; color: var(--fog); margin-bottom: 20px; min-height: 16px; text-align: center; }
+#status-bar .ok  { color: var(--mint); }
+#status-bar .err { color: var(--hot); }
+
+/* ─── HIDE WHEN NO DATA ─── */
+.hide { display: none !important; }
+
+/* ─── MODAL DETALHE LOJA (ranking) ─── */
+.modal-overlay {
+  display: none; position: fixed; inset: 0; z-index: 500;
+  background: rgba(5,7,15,.85); backdrop-filter: blur(8px);
+  align-items: center; justify-content: center; padding: 20px;
+}
+.modal-overlay.show { display: flex; }
+.modal-box {
+  background: var(--panel); border: 1px solid var(--rim2); border-radius: 14px;
+  width: 100%; max-width: 720px; max-height: 90vh;
+  box-shadow: 0 32px 80px rgba(0,0,0,.8);
+  display: flex; flex-direction: column; overflow: hidden;
+  animation: modalIn .2s ease-out;
+}
+@keyframes modalIn { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+.modal-head {
+  display: flex; justify-content: space-between; align-items: flex-start;
+  padding: 20px 24px 16px; border-bottom: 1px solid var(--rim); gap: 16px;
+}
+.modal-head-left { flex: 1; min-width: 0; }
+.modal-title {
+  font-family: var(--font-display); font-size: 26px; letter-spacing: 2px;
+  background: linear-gradient(90deg, var(--neon), var(--neon2));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  margin-bottom: 4px;
+}
+.modal-sub {
+  font-size: 11px; color: var(--fog); letter-spacing: .5px; text-transform: uppercase;
+}
+.modal-close {
+  background: transparent; border: 1px solid var(--rim2); color: var(--fog);
+  width: 34px; height: 34px; border-radius: 8px; cursor: pointer;
+  font-size: 18px; line-height: 1; transition: all .15s; flex-shrink: 0;
+}
+.modal-close:hover { border-color: var(--hot); color: var(--hot); }
+.modal-body { padding: 20px 24px; overflow-y: auto; }
+
+.modal-summary {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;
+  margin-bottom: 20px;
+}
+@media (max-width: 600px) { .modal-summary { grid-template-columns: repeat(2, 1fr); } }
+.modal-kpi {
+  background: var(--panel2); border: 1px solid var(--rim); border-radius: 10px;
+  padding: 12px 14px;
+}
+.modal-kpi-label {
+  font-size: 9px; color: var(--fog); text-transform: uppercase;
+  letter-spacing: .6px; font-weight: 600; margin-bottom: 4px;
+}
+.modal-kpi-val {
+  font-family: var(--font-display); font-size: 22px; line-height: 1;
+  color: var(--ice); letter-spacing: .5px;
+}
+.modal-kpi.pos .modal-kpi-val { color: var(--hot); }
+.modal-kpi.neg .modal-kpi-val { color: var(--mint); }
+.modal-kpi.blue .modal-kpi-val { color: var(--neon2); }
+.modal-kpi.warm .modal-kpi-val { color: var(--warm); }
+
+.modal-section-title {
+  font-family: var(--font-display); font-size: 16px; letter-spacing: 1.5px;
+  color: var(--ice); margin: 8px 0 12px; padding-bottom: 8px;
+  border-bottom: 1px solid var(--rim);
+}
+
+.modal-mes {
+  background: var(--panel2); border: 1px solid var(--rim); border-radius: 10px;
+  padding: 14px 16px; margin-bottom: 10px;
+}
+.modal-mes-head {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid var(--rim);
+}
+.modal-mes-name {
+  font-family: var(--font-display); font-size: 16px; letter-spacing: 1.5px;
+  color: var(--neon2);
+}
+.modal-mes-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
+}
+@media (max-width: 520px) { .modal-mes-grid { grid-template-columns: 1fr; } }
+.modal-mes-cell { display: flex; flex-direction: column; gap: 2px; }
+.modal-mes-cell .lbl {
+  font-size: 9px; color: var(--fog); text-transform: uppercase;
+  letter-spacing: .5px; font-weight: 600;
+}
+.modal-mes-cell .val {
+  font-size: 14px; color: var(--ice); font-weight: 600; font-variant-numeric: tabular-nums;
+}
+.modal-mes-cell.pos .val { color: var(--hot); }
+.modal-mes-cell.neg .val { color: var(--mint); }
+
+.modal-just {
+  margin-top: 10px; padding: 10px 12px;
+  background: rgba(255,179,71,.08); border-left: 3px solid var(--warm);
+  border-radius: 4px; font-size: 12px; color: var(--warm); line-height: 1.5;
+}
+.modal-just-empty {
+  margin-top: 10px; padding: 10px 12px;
+  background: rgba(74,88,128,.08); border-left: 3px solid var(--rim2);
+  border-radius: 4px; font-size: 11px; color: var(--fog); font-style: italic;
+}
+
+.rank-item { cursor: pointer; }
+.rank-item:active { transform: translateX(3px) scale(0.99); }
+
+/* ─── LOGIN OVERLAY ─── */
+.login-overlay{position:fixed;inset:0;z-index:9999;background:var(--void);
+  display:flex;align-items:center;justify-content:center;}
+.login-overlay.hidden{display:none;}
+.login-box{background:var(--panel);border:1px solid var(--rim2);border-radius:16px;
+  padding:48px 40px;width:100%;max-width:400px;text-align:center;
+  box-shadow:0 32px 80px rgba(0,0,0,.8);}
+.login-brand{font-family:var(--font-display);font-size:42px;letter-spacing:3px;
+  background:linear-gradient(90deg,var(--neon),var(--neon2));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:6px;}
+.login-sub{font-size:11px;color:var(--fog);letter-spacing:.08em;text-transform:uppercase;margin-bottom:36px;}
+.login-field{position:relative;margin-bottom:16px;}
+.login-field input{width:100%;background:var(--panel2);border:1px solid var(--rim);
+  border-radius:8px;padding:12px 16px;color:var(--ice);font-family:var(--font-ui);
+  font-size:14px;outline:none;transition:border-color .2s;text-align:left;}
+.login-field input:focus{border-color:var(--neon);}
+.login-field input::placeholder{color:var(--fog);}
+.login-btn{width:100%;margin-top:8px;background:linear-gradient(135deg,var(--neon),var(--neon2));
+  color:#fff;border:none;border-radius:8px;padding:13px;font-family:var(--font-ui);
+  font-size:14px;font-weight:600;cursor:pointer;letter-spacing:.5px;transition:all .2s;}
+.login-btn:hover{transform:translateY(-1px);box-shadow:0 4px 20px rgba(61,127,255,.4);}
+.login-err{color:var(--hot);font-size:12px;margin-top:12px;min-height:18px;}
+.login-footer{font-size:10px;color:var(--fog);margin-top:24px;letter-spacing:.06em;}
+
+.wrap { position: relative; z-index: 1; padding: 24px 32px; max-width: 1700px; margin: 0 auto; }
+
+/* ─── KPI ROW ─── */
+.kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin-bottom: 24px; }
+.kpi {
+  background: var(--panel); border: 1px solid var(--rim); border-radius: 12px;
+  padding: 13px 16px; position: relative; overflow: hidden;
+  transition: transform .2s, border-color .2s; cursor: default;
+}
+.kpi:hover { transform: translateY(-3px); border-color: var(--rim2); }
+.kpi-glow { position: absolute; top: -20px; right: -20px; width: 60px; height: 60px; border-radius: 50%; opacity: .12; filter: blur(16px); }
+.kpi.k-blue .kpi-glow { background: var(--neon); }
+.kpi.k-cyan .kpi-glow { background: var(--neon2); }
+.kpi.k-mint .kpi-glow { background: var(--mint); }
+.kpi.k-warm .kpi-glow { background: var(--warm); }
+.kpi.k-hot  .kpi-glow { background: var(--hot); }
+.kpi-top { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 10px; }
+.kpi-icon { font-size: 14px; opacity: .85; }
+.kpi-val {
+  font-family: var(--font-display); font-size: 28px; line-height: 1;
+  background: linear-gradient(135deg,var(--ice),var(--mist));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 3px;
+}
+.kpi.k-blue .kpi-val { background:linear-gradient(135deg,var(--neon),var(--neon2)); -webkit-background-clip:text; }
+.kpi.k-cyan .kpi-val { background:linear-gradient(135deg,var(--neon2),#a8f0ff);    -webkit-background-clip:text; }
+.kpi.k-mint .kpi-val { background:linear-gradient(135deg,var(--mint),#00b8a9);     -webkit-background-clip:text; }
+.kpi.k-warm .kpi-val { background:linear-gradient(135deg,var(--warm),#ffe066);     -webkit-background-clip:text; }
+.kpi.k-hot  .kpi-val { background:linear-gradient(135deg,var(--hot),#ff8c69);      -webkit-background-clip:text; }
+.kpi-label { font-size: 10px; color: var(--fog); font-weight: 600; text-transform: uppercase; letter-spacing: .6px; }
+.kpi-sub { font-size: 10px; color: var(--fog); margin-top: 2px; }
+
+/* ─── TABS ─── */
+.tab-bar { display: flex; border-bottom: 1px solid var(--rim); flex-wrap: wrap; }
+.tab-btn {
+  font-family: var(--font-ui); font-size: 12px; font-weight: 600;
+  padding: 11px 22px; background: none; border: none;
+  border-bottom: 2px solid transparent; color: var(--fog);
+  cursor: pointer; letter-spacing: .5px; text-transform: uppercase;
+  transition: color .15s, border-color .15s;
+}
+.tab-btn.active { color: var(--neon2); border-bottom-color: var(--neon2); }
+.tab-btn:hover:not(.active) { color: var(--mist); }
+.tab-panel { display: none; padding: 20px 0 0; }
+.tab-panel.active { display: block; }
+
+/* ─── TABLE CARD ─── */
+.table-card { background: var(--panel); border: 1px solid var(--rim); border-radius: 14px; overflow: hidden; margin-bottom: 20px; }
+.table-toolbar {
+  display: flex; align-items: center; gap: 10px;
+  padding: 14px 18px; border-bottom: 1px solid var(--rim); flex-wrap: wrap;
+}
+.tbl-search, .tbl-select {
+  background: var(--panel2); border: 1px solid var(--rim); color: var(--ice);
+  padding: 6px 12px; border-radius: 7px; font-family: var(--font-ui); font-size: 12px;
+  outline: none; transition: border-color .15s;
+}
+.tbl-search { width: 220px; }
+.tbl-search:focus, .tbl-select:focus { border-color: var(--neon); }
+.tbl-search::placeholder { color: var(--fog); }
+.tbl-label { font-size: 10px; color: var(--fog); text-transform: uppercase; letter-spacing: .6px; font-weight: 600; }
+.record-count { font-size: 11px; color: var(--fog); margin-left: auto; }
+
+.table-wrap { overflow: auto; max-height: 60vh; }
+table { width: 100%; border-collapse: collapse; font-size: 12px; }
+thead th {
+  background: var(--panel2); color: var(--fog);
+  font-size: 10px; font-weight: 700; letter-spacing: .8px; text-transform: uppercase;
+  padding: 10px 14px; text-align: center; position: sticky; top: 0;
+  white-space: nowrap; border-bottom: 1px solid var(--rim);
+  cursor: pointer; user-select: none; transition: color .15s;
+}
+thead th:hover { color: var(--ice); }
+tbody tr { border-bottom: 1px solid var(--rim); transition: background .1s; }
+tbody tr:last-child { border-bottom: none; }
+tbody tr:hover { background: rgba(255,255,255,.025); }
+tbody td { padding: 9px 14px; white-space: nowrap; color: var(--mist); text-align: center; }
+tbody td.td-loja  { color: var(--neon2); font-weight: 700; }
+tbody td.td-num   { text-align: center; color: var(--mint); font-weight: 600; font-variant-numeric: tabular-nums; }
+tbody td.td-pos   { color: var(--hot); font-weight: 700; font-variant-numeric: tabular-nums; }
+tbody td.td-neg   { color: var(--mint); font-weight: 700; font-variant-numeric: tabular-nums; }
+tbody td.td-justif { color: var(--warm); font-size: 11px; text-align: left !important; white-space: normal; max-width: 360px; line-height: 1.4; }
+tbody td.td-justif-empty { color: var(--fog); font-style: italic; font-size: 11px; }
+
+.tag {
+  display: inline-block; padding: 3px 10px; border-radius: 12px;
+  font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px;
+}
+.tag-up    { background: rgba(255,75,110,.15); color: var(--hot); border: 1px solid rgba(255,75,110,.3); }
+.tag-down  { background: rgba(0,229,155,.12); color: var(--mint); border: 1px solid rgba(0,229,155,.3); }
+.tag-eq    { background: rgba(74,88,128,.2); color: var(--mist); border: 1px solid var(--rim2); }
+.tag-above { background: rgba(255,179,71,.15); color: var(--warm); border: 1px solid rgba(255,179,71,.3); }
+.tag-below { background: rgba(61,127,255,.15); color: var(--neon2); border: 1px solid rgba(61,127,255,.3); }
+
+/* ─── CHART BOX ─── */
+.chart-box {
+  background: var(--panel); border: 1px solid var(--rim); border-radius: 14px;
+  padding: 20px; margin-bottom: 20px;
+}
+.chart-title {
+  font-family: var(--font-display); font-size: 18px; letter-spacing: 1.5px;
+  color: var(--ice); margin-bottom: 14px;
+}
+.chart-inner { position: relative; height: 360px; }
+
+/* ─── RANKING CARDS ─── */
+.rank-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+@media (max-width: 980px) { .rank-grid { grid-template-columns: 1fr; } }
+.rank-card {
+  background: var(--panel); border: 1px solid var(--rim); border-radius: 14px;
+  padding: 20px;
+}
+.rank-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding-bottom: 14px; border-bottom: 1px solid var(--rim); margin-bottom: 14px;
+}
+.rank-title {
+  font-family: var(--font-display); font-size: 18px; letter-spacing: 1.5px;
+}
+.rank-card.ef .rank-title { color: var(--mint); }
+.rank-card.inef .rank-title { color: var(--hot); }
+.rank-item {
+  display: flex; align-items: center; gap: 14px;
+  padding: 10px 12px; background: var(--panel2);
+  border: 1px solid var(--rim); border-radius: 8px; margin-bottom: 8px;
+  transition: transform .15s, border-color .15s;
+}
+.rank-item:hover { transform: translateX(3px); border-color: var(--rim2); }
+.rank-pos {
+  font-family: var(--font-display); font-size: 22px; min-width: 38px; text-align: center;
+}
+.rank-card.ef .rank-pos { color: var(--mint); }
+.rank-card.inef .rank-pos { color: var(--hot); }
+.rank-body { flex: 1; }
+.rank-loja { font-weight: 700; color: var(--ice); font-size: 13px; }
+.rank-detail { font-size: 10px; color: var(--fog); letter-spacing: .3px; margin-top: 2px; }
+.rank-val {
+  font-family: var(--font-display); font-size: 20px; letter-spacing: .8px;
+}
+.rank-card.ef .rank-val { color: var(--mint); }
+.rank-card.inef .rank-val { color: var(--hot); }
+
+/* Métricas extras dentro do card (variação R$ e consumo m³) */
+.rank-metric {
+  display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap;
+  margin-top: 5px; font-size: 11px;
+}
+.rank-metric-lbl { color: var(--fog); font-size: 9px; text-transform: uppercase; letter-spacing: .5px; font-weight: 600; min-width: 85px; }
+.rank-metric-val { font-weight: 700; color: var(--ice); font-variant-numeric: tabular-nums; }
+.rank-metric-val.pos { color: var(--hot); }
+.rank-metric-val.neg { color: var(--mint); }
+.rank-metric-sub { font-size: 10px; color: var(--fog); font-variant-numeric: tabular-nums; }
+.rank-metric-sub.pos { color: var(--hot); }
+.rank-metric-sub.neg { color: var(--mint); }
+
+/* ─── INFO BOX ─── */
+.info-box {
+  background: rgba(61,127,255,.08); border: 1px solid rgba(61,127,255,.25);
+  border-radius: 10px; padding: 12px 16px; font-size: 12px; color: var(--mist);
+  margin-bottom: 16px; line-height: 1.5;
+}
+.info-box b { color: var(--neon2); }
+
+/* ─── DETAIL PANEL ─── */
+.detail-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 14px; margin-bottom: 20px; }
+@media (max-width: 900px) { .detail-grid { grid-template-columns: 1fr; } }
+.mes-card {
+  background: var(--panel); border: 1px solid var(--rim); border-radius: 12px;
+  padding: 16px; transition: border-color .15s;
+}
+.mes-card:hover { border-color: var(--rim2); }
+.mes-head {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid var(--rim);
+}
+.mes-name {
+  font-family: var(--font-display); font-size: 18px; letter-spacing: 1.5px;
+  color: var(--neon2);
+}
+.mes-row { display: flex; justify-content: space-between; padding: 5px 0; font-size: 12px; }
+.mes-row .lbl { color: var(--fog); text-transform: uppercase; font-size: 10px; letter-spacing: .5px; font-weight: 600; }
+.mes-row .val { color: var(--ice); font-weight: 600; font-variant-numeric: tabular-nums; }
+.mes-just {
+  margin-top: 10px; padding: 8px 10px; background: rgba(255,179,71,.08);
+  border-left: 2px solid var(--warm); border-radius: 4px;
+  font-size: 11px; color: var(--warm); line-height: 1.4;
+}
+
+.section-title {
+  font-family: var(--font-display); font-size: 20px; letter-spacing: 1.5px;
+  color: var(--ice); margin: 24px 0 14px 0;
+}
+
+.empty-cell { text-align: center; padding: 52px !important; color: var(--fog); font-size: 13px; white-space: normal !important; }
+.empty-icon { font-size: 2rem; display: block; margin-bottom: 8px; opacity: .5; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-left">
+    <div class="brand">AQUA CONTROL</div>
+    <div class="brand-sep"></div>
+    <div class="brand-sub">Análise de Consumo · Mart Minas</div>
+  </div>
+  <div class="topbar-right">
+    <div class="status-dot off" id="status-dot"></div>
+    <div class="status-label" id="status-label">Nenhuma planilha carregada</div>
+    <input type="file" id="xlsx-input" accept=".xlsx,.xls" onchange="handleImport(this.files[0])">
+    <button class="upload-btn green" onclick="document.getElementById('xlsx-input').click()">⬆ Importar Planilha</button>
+    <button class="upload-btn gold" id="btn-pptx" onclick="gerarApresentacao()" style="display:none;">📊 Gerar Apresentação</button>
+    <button class="upload-btn ghost" id="btn-clear" onclick="limparTudo()" style="display:none;">✕ Limpar</button>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <!-- AVISO QUANDO VAZIO -->
+  <div class="empty-state" id="empty-state">
+    <span class="empty-icon-big">💧</span>
+    <div class="empty-text">Nenhuma planilha carregada</div>
+    <div class="empty-sub">Use o botão <b>Importar Planilha</b> no topo para começar</div>
+  </div>
+
+  <div id="status-bar"></div>
+
+  <!-- CONTEÚDO (quando dados carregados) -->
+  <div id="main-content" class="hide">
+
+  <!-- KPIs GERAIS -->
+  <div class="kpi-row" id="kpi-row"></div>
+
+  <!-- TABS -->
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="switchTab('comp',this)">📊 Comparativo</button>
+    <button class="tab-btn" onclick="switchTab('todas',this)">🏪 Todas as Lojas</button>
+    <button class="tab-btn" onclick="switchTab('rank',this)">🏆 Ranking</button>
+    <button class="tab-btn" onclick="switchTab('det',this)">🔍 Detalhe Loja</button>
+    <button class="tab-btn" onclick="switchTab('just',this)" style="color:var(--warm);">📝 Justificativas</button>
+  </div>
+
+  <!-- COMPARATIVO -->
+  <div class="tab-panel active" id="tab-comp">
+    <div class="table-card">
+      <div class="table-toolbar">
+        <span class="tbl-label">Mês anterior</span>
+        <select class="tbl-select" id="m-ant" onchange="renderComp()">
+        </select>
+        <span class="tbl-label">Mês atual</span>
+        <select class="tbl-select" id="m-atu" onchange="renderComp()">
+        </select>
+        <span class="tbl-label">Filtro</span>
+        <select class="tbl-select" id="f-comp" onchange="renderComp()">
+          <option value="todos">Todas as lojas</option>
+          <option value="up">Apenas aumento</option>
+          <option value="down">Apenas redução</option>
+          <option value="above">Acima da meta</option>
+          <option value="below">Abaixo da meta</option>
+          <option value="nojust">Aumento sem justificativa</option>
+        </select>
+        <input class="tbl-search" id="s-comp" placeholder="Buscar loja…" oninput="renderComp()">
+        <span class="record-count" id="cnt-comp">0 registros</span>
+      </div>
+    </div>
+
+    <div class="chart-box">
+      <div class="chart-title">TOP 15 · MAIOR VARIAÇÃO ENTRE MESES</div>
+      <div class="chart-inner"><canvas id="chart-comp"></canvas></div>
+    </div>
+
+    <div class="table-card">
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th>Loja</th>
+            <th id="th-ant">Real. Anterior</th>
+            <th id="th-atu">Real. Atual</th>
+            <th>Variação R$</th>
+            <th>Variação %</th>
+            <th class="col-consumo" id="th-cons-ant">Consumo Ant. m³</th>
+            <th class="col-consumo" id="th-cons-atu">Consumo Atu. m³</th>
+            <th class="col-consumo">Var. Consumo %</th>
+            <th>Meta</th>
+            <th>Desvio R$</th>
+            <th>Status</th>
+            <th>Justificativa</th>
+          </tr></thead>
+          <tbody id="tbody-comp"><tr><td colspan="12" class="empty-cell">—</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- TODAS LOJAS -->
+  <div class="tab-panel" id="tab-todas">
+    <div class="table-card">
+      <div class="table-toolbar">
+        <span class="tbl-label">Mês</span>
+        <select class="tbl-select" id="m-todas" onchange="renderTodas()">
+        </select>
+        <span class="tbl-label">Ordenar</span>
+        <select class="tbl-select" id="o-todas" onchange="renderTodas()">
+          <option value="loja">Por loja</option>
+          <option value="real-desc">Maior R$ (realizado)</option>
+          <option value="real-asc">Menor R$ (realizado)</option>
+          <option value="desv-desc">Maior estouro R$</option>
+          <option value="desv-asc">Maior economia R$</option>
+          <option value="cons-desc" class="opt-consumo">Maior volume m³</option>
+          <option value="cons-asc" class="opt-consumo">Menor volume m³</option>
+        </select>
+        <input class="tbl-search" id="s-todas" placeholder="Buscar loja…" oninput="renderTodas()">
+        <span class="record-count" id="cnt-todas">0 registros</span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th>Loja</th>
+            <th>Meta</th>
+            <th>Realizado</th>
+            <th>Desvio R$</th>
+            <th>% Diferença Meta</th>
+            <th class="col-consumo">Consumo m³</th>
+            <th>Status</th>
+            <th>Justificativa</th>
+          </tr></thead>
+          <tbody id="tbody-todas"><tr><td colspan="8" class="empty-cell">—</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- RANKING -->
+  <div class="tab-panel" id="tab-rank">
+    <div class="table-card">
+      <div class="table-toolbar">
+        <span class="tbl-label">Mês</span>
+        <select class="tbl-select" id="m-rank" onchange="renderRank()">
+        </select>
+        <span class="tbl-label">Top</span>
+        <select class="tbl-select" id="n-rank" onchange="renderRank()">
+          <option value="10" selected>10</option>
+          <option value="15">15</option>
+          <option value="20">20</option>
+          <option value="30">30</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="info-box">
+      <b>Como funciona:</b> o ranking compara o <b>mês selecionado com o mês anterior</b>.
+      Lojas que mais <b>reduziram</b> o gasto aparecem em <b>Mais Eficientes</b>.
+      Lojas que mais <b>aumentaram</b> o gasto aparecem em <b>Menos Eficientes</b>.
+    </div>
+
+    <div class="rank-grid">
+      <div class="rank-card ef">
+        <div class="rank-head">
+          <div class="rank-title">🏆 MAIS EFICIENTES</div>
+        </div>
+        <div id="list-ef"></div>
+      </div>
+      <div class="rank-card inef">
+        <div class="rank-head">
+          <div class="rank-title">⚠ MENOS EFICIENTES</div>
+        </div>
+        <div id="list-inef"></div>
+      </div>
+    </div>
+
+    <div class="chart-box" style="margin-top:20px;">
+      <div class="chart-title">COMPARATIVO MÊS × MÊS ANTERIOR · TOP 10 REDUÇÕES vs TOP 10 AUMENTOS</div>
+      <div class="chart-inner" style="height:520px;"><canvas id="chart-rank"></canvas></div>
+    </div>
+  </div>
+
+  <!-- DETALHE -->
+  <div class="tab-panel" id="tab-det">
+    <div class="table-card">
+      <div class="table-toolbar">
+        <span class="tbl-label">Loja</span>
+        <select class="tbl-select" id="det-loja" onchange="renderDet()" style="min-width:200px;"></select>
+        <span class="tbl-label">Período</span>
+        <select class="tbl-select" id="det-mes" onchange="renderDet()" style="min-width:200px;"></select>
+      </div>
+    </div>
+    <div id="det-content"></div>
+  </div>
+
+  <!-- JUSTIFICATIVAS -->
+  <div class="tab-panel" id="tab-just">
+    <div class="info-box">
+      Lojas com justificativa registrada no sistema, ordenadas pelo maior desvio.
+    </div>
+    <div class="table-card">
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th>Loja</th>
+            <th>Mês</th>
+            <th>Meta</th>
+            <th>Realizado</th>
+            <th class="col-consumo">Consumo m³</th>
+            <th>Desvio R$</th>
+            <th>Justificativa</th>
+          </tr></thead>
+          <tbody id="tbody-just"><tr><td colspan="7" class="empty-cell">—</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  </div><!-- /main-content -->
+
+</div>
+
+<!-- MODAL DETALHE DA LOJA -->
+<div class="modal-overlay" id="modal-loja" onclick="if(event.target===this)fecharModalLoja()">
+  <div class="modal-box">
+    <div class="modal-head">
+      <div class="modal-head-left">
+        <div class="modal-title" id="modal-title">—</div>
+        <div class="modal-sub" id="modal-sub">—</div>
+      </div>
+      <button class="modal-close" onclick="fecharModalLoja()" title="Fechar (Esc)">✕</button>
+    </div>
+    <div class="modal-body" id="modal-body"></div>
+  </div>
+</div>
+
+<script>
+let DADOS = {};
+const MESES_VALIDOS = ['JANEIRO','FEVEREIRO','MARÇO','ABRIL','MAIO','JUNHO','JULHO','AGOSTO','SETEMBRO','OUTUBRO','NOVEMBRO','DEZEMBRO'];
+let MESES = []; // meses presentes nos dados importados, em ordem
+let HAS_CONSUMO = false; // true se planilha tem coluna Consumo (m³)
+
+// registra o plugin datalabels para uso opcional por gráfico
+if (window.ChartDataLabels) { Chart.register(window.ChartDataLabels); }
+// desativa por padrão (cada gráfico decide se quer usar)
+Chart.defaults.plugins.datalabels = Chart.defaults.plugins.datalabels || {};
+Chart.defaults.plugins.datalabels.display = false;
+
+/* ─── HELPERS ─── */
+const money = v => 'R$ ' + Number(v||0).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
+const moneyK = v => { const a=Math.abs(v); if(a>=1e6) return 'R$'+(v/1e6).toFixed(1)+'M'; if(a>=1e3) return 'R$'+(v/1e3).toFixed(1)+'k'; return 'R$'+v.toFixed(0); };
+const pct = v => (v>=0?'+':'') + v.toFixed(1) + '%';
+const esc = s => String(s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const m3 = v => Number(v||0).toLocaleString('pt-BR', {minimumFractionDigits:0, maximumFractionDigits:2}) + ' m³';
+
+function switchTab(tab, btn){
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-'+tab).classList.add('active');
+  btn.classList.add('active');
+  if(tab==='comp') renderComp();
+  if(tab==='todas') renderTodas();
+  if(tab==='rank') renderRank();
+  if(tab==='det') renderDet();
+  if(tab==='just') renderJust();
+}
+
+let chartComp=null, chartRank=null, chartDet=null;
+
+/* ─── KPIs GERAIS ─── */
+function renderKPIs(mesEscolhido){
+  const lojasList = Object.keys(DADOS);
+  // se o usuário não passou mês, usa o último disponível
+  const mesAtu = mesEscolhido && MESES.includes(mesEscolhido)
+               ? mesEscolhido
+               : MESES[MESES.length-1];
+  const idxAtu = MESES.indexOf(mesAtu);
+  const mesAnt = idxAtu > 0 ? MESES[idxAtu-1] : null;
+
+  // Totais do mês escolhido
+  let totMeta=0, totReal=0, totConsumo=0, nJust=0, nAcima=0;
+  // Totais do mês anterior (para comparação)
+  let totRealAnt=0, totConsAnt=0;
+
+  lojasList.forEach(l => {
+    const d = DADOS[l][mesAtu];
+    if(d){
+      totMeta += d.meta; totReal += d.realizado;
+      totConsumo += (d.consumo || 0);
+      if(d.justificativa) nJust++;
+      if(d.realizado > d.meta) nAcima++;
+    }
+    if(mesAnt){
+      const da = DADOS[l][mesAnt];
+      if(da){ totRealAnt += da.realizado; totConsAnt += (da.consumo||0); }
+    }
+  });
+
+  const desv = totReal - totMeta;
+  const desvPct = totMeta>0 ? (desv/totMeta)*100 : 0;
+
+  // variação vs mês anterior
+  const varPct = totRealAnt > 0 ? ((totReal - totRealAnt)/totRealAnt)*100 : 0;
+  const varConsPct = totConsAnt > 0 ? ((totConsumo - totConsAnt)/totConsAnt)*100 : 0;
+
+  const labelPer = mesAtu || '—';
+  const abrevUlt = mesAtu ? mesAtu.slice(0,3) : '—';
+  const subAnt = mesAnt ? ` vs ${mesAnt.slice(0,3)}: ${(varPct>=0?'+':'')}${varPct.toFixed(1)}%` : '';
+  const subAntC = mesAnt ? ` vs ${mesAnt.slice(0,3)}: ${(varConsPct>=0?'+':'')}${varConsPct.toFixed(1)}%` : '';
+
+  // Card extra de consumo: só aparece se a planilha tiver a coluna
+  const cardConsumo = HAS_CONSUMO ? `
+    <div class="kpi k-cyan"><div class="kpi-glow"></div><div class="kpi-top"><span class="kpi-icon">🚰</span></div><div class="kpi-val">${Math.round(totConsumo).toLocaleString('pt-BR')}</div><div class="kpi-label">Volume m³ · ${labelPer}</div><div class="kpi-sub">${subAntC.trim()}</div></div>
+  ` : '';
+
+  document.getElementById('kpi-row').innerHTML = `
+    <div class="kpi k-blue"><div class="kpi-glow"></div><div class="kpi-top"><span class="kpi-icon">🏪</span></div><div class="kpi-val">${lojasList.length}</div><div class="kpi-label">Lojas Monitoradas</div></div>
+    <div class="kpi k-cyan"><div class="kpi-glow"></div><div class="kpi-top"><span class="kpi-icon">🎯</span></div><div class="kpi-val">${moneyK(totMeta)}</div><div class="kpi-label">Meta · ${labelPer}</div></div>
+    <div class="kpi k-mint"><div class="kpi-glow"></div><div class="kpi-top"><span class="kpi-icon">💧</span></div><div class="kpi-val">${moneyK(totReal)}</div><div class="kpi-label">Realizado · ${labelPer}</div><div class="kpi-sub">${subAnt}</div></div>
+    ${cardConsumo}
+    <div class="kpi k-${desv>0?'hot':'mint'}"><div class="kpi-glow"></div><div class="kpi-top"><span class="kpi-icon">📈</span></div><div class="kpi-val">${pct(desvPct)}</div><div class="kpi-label">Desvio vs Meta · ${labelPer}</div><div class="kpi-sub">${money(desv)}</div></div>
+    <div class="kpi k-warm"><div class="kpi-glow"></div><div class="kpi-top"><span class="kpi-icon">📝</span></div><div class="kpi-val">${nJust}</div><div class="kpi-label">Justificativas · ${nAcima} acima em ${abrevUlt}</div></div>
+  `;
+}
+
+/* ─── COMPARATIVO ─── */
+function renderComp(){
+  const mA = document.getElementById('m-ant').value;
+  const mB = document.getElementById('m-atu').value;
+  const f  = document.getElementById('f-comp').value;
+  const s  = (document.getElementById('s-comp').value||'').toLowerCase();
+
+  // KPIs gerais do topo sempre refletem o Mês Atual escolhido
+  renderKPIs(mB);
+
+  document.getElementById('th-ant').textContent = 'Real. ' + mA;
+  document.getElementById('th-atu').textContent = 'Real. ' + mB;
+  if(HAS_CONSUMO){
+    document.getElementById('th-cons-ant').textContent = 'Consumo ' + mA.slice(0,3) + ' m³';
+    document.getElementById('th-cons-atu').textContent = 'Consumo ' + mB.slice(0,3) + ' m³';
+  }
+
+  let rows = [];
+  Object.keys(DADOS).forEach(loja => {
+    const a = DADOS[loja][mA], b = DADOS[loja][mB];
+    if(!a || !b) return;
+    const varRS = b.realizado - a.realizado;
+    const varPct = a.realizado > 0 ? (varRS/a.realizado)*100 : (b.realizado>0?100:0);
+    const consA = a.consumo || 0;
+    const consB = b.consumo || 0;
+    const varCons = consB - consA;
+    const varConsPct = consA > 0 ? (varCons/consA)*100 : (consB>0?100:0);
+    rows.push({ loja, realA:a.realizado, realB:b.realizado, varRS, varPct,
+      consA, consB, varCons, varConsPct,
+      meta:b.meta, desvio:b.desvio, justif:b.justificativa,
+      above: b.realizado > b.meta });
+  });
+
+  if(f==='up')     rows = rows.filter(r => r.varRS > 0);
+  if(f==='down')   rows = rows.filter(r => r.varRS < 0);
+  if(f==='above')  rows = rows.filter(r => r.above);
+  if(f==='below')  rows = rows.filter(r => !r.above);
+  if(f==='nojust') rows = rows.filter(r => r.varRS > 0 && !r.justif);
+  if(s) rows = rows.filter(r => r.loja.toLowerCase().includes(s));
+
+  rows.sort((x,y) => y.varRS - x.varRS);
+
+  document.getElementById('cnt-comp').textContent = rows.length + ' registros';
+
+  const nCols = HAS_CONSUMO ? 12 : 9;
+  const tbody = document.getElementById('tbody-comp');
+  if(!rows.length){
+    tbody.innerHTML = `<tr><td colspan="${nCols}" class="empty-cell"><span class="empty-icon">🔍</span>Nenhum registro encontrado</td></tr>`;
+  } else {
+    tbody.innerHTML = rows.map(r => {
+      let tag;
+      if(r.varRS > 0.01) tag = '<span class="tag tag-up">⬆ Aumento</span>';
+      else if(r.varRS < -0.01) tag = '<span class="tag tag-down">⬇ Redução</span>';
+      else tag = '<span class="tag tag-eq">= Estável</span>';
+      const just = r.varRS > 0 && r.justif
+        ? `<td class="td-justif">${esc(r.justif)}</td>`
+        : (r.varRS > 0 ? '<td class="td-justif-empty">⚠ Sem justificativa</td>' : '<td class="td-justif-empty">—</td>');
+      return `<tr>
+        <td class="td-loja">${esc(r.loja)}</td>
+        <td class="td-num">${money(r.realA)}</td>
+        <td class="td-num">${money(r.realB)}</td>
+        <td class="${r.varRS>0?'td-pos':'td-neg'}">${money(r.varRS)}</td>
+        <td class="${r.varRS>0?'td-pos':'td-neg'}">${pct(r.varPct)}</td>
+        <td class="col-consumo td-num" style="color:var(--neon2)">${r.consA.toLocaleString('pt-BR',{maximumFractionDigits:2})}</td>
+        <td class="col-consumo td-num" style="color:var(--neon2)">${r.consB.toLocaleString('pt-BR',{maximumFractionDigits:2})}</td>
+        <td class="col-consumo ${r.varCons>0?'td-pos':'td-neg'}">${pct(r.varConsPct)}</td>
+        <td class="td-num">${money(r.meta)}</td>
+        <td class="${r.desvio>0?'td-pos':'td-neg'}">${money(r.desvio)}</td>
+        <td>${tag}</td>
+        ${just}
+      </tr>`;
+    }).join('');
+  }
+
+  // gráfico top 15 variações
+  const top = [...rows].sort((a,b) => Math.abs(b.varRS)-Math.abs(a.varRS)).slice(0, 15);
+  if(chartComp) chartComp.destroy();
+  const optsComp = chartOpts();
+  // rótulos em cima das barras com o valor em R$
+  optsComp.plugins.datalabels = {
+    display: true,
+    anchor: 'end',
+    align: 'end',
+    offset: 2,
+    color: '#e8f0ff',
+    font: { family: 'Outfit', size: 9, weight: 600 },
+    formatter: v => {
+      const a = Math.abs(v);
+      if (a >= 1e6) return (v/1e6).toFixed(1)+'M';
+      if (a >= 1e3) return (v/1e3).toFixed(1)+'k';
+      return v.toFixed(0);
+    }
+  };
+  chartComp = new Chart(document.getElementById('chart-comp'), {
+    type: 'bar',
+    data: {
+      labels: top.map(r => r.loja),
+      datasets: [
+        { label: mA, data: top.map(r => r.realA), backgroundColor: '#3d7fff', borderRadius: 4 },
+        { label: mB, data: top.map(r => r.realB), backgroundColor: '#00c9ff', borderRadius: 4 }
+      ]
+    },
+    options: optsComp
+  });
+}
+
+/* ─── TODAS LOJAS ─── */
+function renderTodas(){
+  const m  = document.getElementById('m-todas').value;
+  const o  = document.getElementById('o-todas').value;
+  const s  = (document.getElementById('s-todas').value||'').toLowerCase();
+
+  // KPIs gerais refletem o mês selecionado nesta aba
+  renderKPIs(m);
+
+  let rows = Object.keys(DADOS).map(loja => {
+    const d = DADOS[loja][m]; if(!d) return null;
+    const pctM = d.meta > 0 ? (d.realizado/d.meta)*100 : 0;
+    const cons = d.consumo || 0;
+    return { loja, ...d, pctM, above: d.realizado > d.meta };
+  }).filter(r => r);
+  if(s) rows = rows.filter(r => r.loja.toLowerCase().includes(s));
+
+  if(o==='loja') rows.sort((a,b) => a.loja.localeCompare(b.loja, undefined, {numeric:true}));
+  if(o==='real-desc') rows.sort((a,b) => b.realizado - a.realizado);
+  if(o==='real-asc')  rows.sort((a,b) => a.realizado - b.realizado);
+  if(o==='desv-desc') rows.sort((a,b) => b.desvio - a.desvio);
+  if(o==='desv-asc')  rows.sort((a,b) => a.desvio - b.desvio);
+  if(o==='cons-desc') rows.sort((a,b) => (b.consumo||0) - (a.consumo||0));
+  if(o==='cons-asc')  rows.sort((a,b) => (a.consumo||0) - (b.consumo||0));
+
+  document.getElementById('cnt-todas').textContent = rows.length + ' registros';
+  const nCols = HAS_CONSUMO ? 8 : 7;
+  const tbody = document.getElementById('tbody-todas');
+  if(!rows.length){
+    tbody.innerHTML = `<tr><td colspan="${nCols}" class="empty-cell"><span class="empty-icon">🏪</span>Nenhuma loja</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = rows.map(r => `
+    <tr>
+      <td class="td-loja">${esc(r.loja)}</td>
+      <td class="td-num">${money(r.meta)}</td>
+      <td class="td-num">${money(r.realizado)}</td>
+      <td class="${r.desvio>0?'td-pos':'td-neg'}">${money(r.desvio)}</td>
+      <td class="${r.desvio>0?'td-pos':'td-neg'}">${pct(r.pctM - 100)}</td>
+      <td class="col-consumo td-num" style="color:var(--neon2)">${(r.consumo||0).toLocaleString('pt-BR',{maximumFractionDigits:2})}</td>
+      <td><span class="tag ${r.above?'tag-above':'tag-below'}">${r.above?'▲ Acima':'▼ Dentro'}</span></td>
+      ${r.justificativa ? `<td class="td-justif">${esc(r.justificativa)}</td>` : '<td class="td-justif-empty">—</td>'}
+    </tr>
+  `).join('');
+}
+
+/* ─── RANKING ─── */
+function renderRank(){
+  const m    = document.getElementById('m-rank').value;
+  const topN = parseInt(document.getElementById('n-rank').value);
+
+  // KPIs gerais refletem o mês do ranking
+  renderKPIs(m);
+
+  // Mês anterior para calcular variação mês a mês
+  const idxM = MESES.indexOf(m);
+  const mAnt = idxM > 0 ? MESES[idxM-1] : null;
+
+  let rows = Object.keys(DADOS).map(loja => {
+    const d = DADOS[loja][m]; if(!d) return null;
+    const meta = d.meta, real = d.realizado;
+    if(meta <= 0) return null;
+    const desv = real - meta;
+    const pctD = (desv/meta)*100;
+
+    // dados do mês anterior (para variação mês x mês)
+    const dA = mAnt ? DADOS[loja][mAnt] : null;
+    const realAnt = dA ? dA.realizado : 0;
+    const consAnt = dA ? (dA.consumo||0) : 0;
+    const varRS   = dA ? (real - realAnt) : 0;
+    const varPct  = dA && realAnt > 0 ? (varRS/realAnt)*100 : 0;
+
+    const cons    = d.consumo || 0;
+    const varCons = dA ? (cons - consAnt) : 0;
+    const varConsPct = dA && consAnt > 0 ? (varCons/consAnt)*100 : 0;
+
+    return { loja, meta, real, desv, pctD, cons, consAnt, realAnt, varRS, varPct, varCons, varConsPct, hasAnt: !!dA };
+  }).filter(r => r);
+
+  // Só lojas com mês anterior entram no ranking (o ranking é mês x mês)
+  // Mais eficientes = quem mais REDUZIU o R$ vs mês anterior (varPct mais negativo)
+  // Menos eficientes = quem mais AUMENTOU o R$ vs mês anterior (varPct mais positivo)
+  const rowsComAnt = rows.filter(r => r.hasAnt);
+  const ef   = [...rowsComAnt].sort((a,b) => a.varPct - b.varPct).slice(0, topN);
+  const inef = [...rowsComAnt].sort((a,b) => b.varPct - a.varPct).slice(0, topN);
+
+  // Aviso se não há mês anterior disponível (ranking vazio)
+  if(!mAnt){
+    document.getElementById('list-ef').innerHTML   = '<div class="info-box" style="margin:0;">Selecione um mês que tenha um mês anterior na planilha para comparar.</div>';
+    document.getElementById('list-inef').innerHTML = '';
+    if(chartRank){ chartRank.destroy(); chartRank = null; }
+    return;
+  }
+
+  // template compartilhado dos cards (mostra variação R$ mês x mês e consumo m³)
+  const renderCard = (r, i) => {
+    // linha de consumo (só quando a planilha tem consumo)
+    const linhaConsumo = HAS_CONSUMO
+      ? (r.hasAnt
+          ? `<div class="rank-metric">
+               <span class="rank-metric-lbl">Consumo (${mAnt.slice(0,3).toLowerCase()}→${m.slice(0,3).toLowerCase()})</span>
+               <span class="rank-metric-val" style="color:var(--neon2)">${mAnt.slice(0,3).toLowerCase()} ${r.consAnt.toLocaleString('pt-BR',{maximumFractionDigits:0})} m³ · ${m.slice(0,3).toLowerCase()} ${r.cons.toLocaleString('pt-BR',{maximumFractionDigits:0})} m³</span>
+               <span class="rank-metric-sub ${r.varCons>0?'pos':'neg'}">(${r.varCons>=0?'+':''}${r.varCons.toLocaleString('pt-BR',{maximumFractionDigits:0})} m³ · var ${pct(r.varConsPct)})</span>
+             </div>`
+          : `<div class="rank-metric">
+               <span class="rank-metric-lbl">Consumo ${m.slice(0,3).toLowerCase()}</span>
+               <span class="rank-metric-val" style="color:var(--neon2)">${r.cons.toLocaleString('pt-BR',{maximumFractionDigits:0})} m³</span>
+             </div>`)
+      : '';
+
+    // linha de variação R$ (só quando há mês anterior)
+    const linhaVar = r.hasAnt
+      ? `<div class="rank-metric">
+           <span class="rank-metric-lbl">Var. R$ (${mAnt.slice(0,3)}→${m.slice(0,3)})</span>
+           <span class="rank-metric-val ${r.varRS>0?'pos':'neg'}">${r.varRS>=0?'+':''}${money(r.varRS)}</span>
+           <span class="rank-metric-sub ${r.varRS>0?'pos':'neg'}">(${pct(r.varPct)})</span>
+         </div>`
+      : `<div class="rank-metric"><span class="rank-metric-lbl">Sem mês anterior para comparar</span></div>`;
+
+    return `
+    <div class="rank-item" onclick="abrirModalLoja('${esc(r.loja).replace(/'/g,"\\'")}','${m}')" title="Clique para ver detalhes">
+      <div class="rank-pos">#${i+1}</div>
+      <div class="rank-body">
+        <div class="rank-loja">Loja ${esc(r.loja)}</div>
+        <div class="rank-detail">Valor Meta ${moneyK(r.meta)} · Realizado ${moneyK(r.real)} · Desvio ${moneyK(r.desv)} · Var ${pct(r.pctD)}</div>
+        ${linhaVar}
+        ${linhaConsumo}
+      </div>
+    </div>`;
+  };
+
+  document.getElementById('list-ef').innerHTML   = ef.map(renderCard).join('');
+  document.getElementById('list-inef').innerHTML = inef.map(renderCard).join('');
+
+  // gráfico
+  const efTop = ef.slice(0,10);
+  const inefTop = inef.slice(0,10).reverse();
+  const labels = [...efTop.map(r => '✓ ' + r.loja), ...inefTop.map(r => '✗ ' + r.loja)];
+  const values = [...efTop.map(r => r.varPct),       ...inefTop.map(r => r.varPct)];
+
+  if(chartRank) chartRank.destroy();
+  const optsRank = chartOpts({ indexAxis:'y', legend:false, isPct:true });
+  // rótulos no final das barras horizontais com o %
+  optsRank.plugins.datalabels = {
+    display: true,
+    anchor: 'end',
+    align: v => v.dataset.data[v.dataIndex] < 0 ? 'start' : 'end',
+    offset: 4,
+    color: v => v.dataset.data[v.dataIndex] < 0 ? '#00e59b' : '#ff4b6e',
+    font: { family: 'Outfit', size: 10, weight: 700 },
+    formatter: v => (v>=0?'+':'') + v.toFixed(1) + '%'
+  };
+  // clicar em uma barra abre o modal da loja
+  const lojasChart = [...efTop.map(r => r.loja), ...inefTop.map(r => r.loja)];
+  optsRank.onClick = (evt, elements) => {
+    if (elements && elements.length) {
+      const idx = elements[0].index;
+      abrirModalLoja(lojasChart[idx], m);
+    }
+  };
+  optsRank.onHover = (evt, elements) => {
+    evt.native.target.style.cursor = elements.length ? 'pointer' : 'default';
+  };
+  chartRank = new Chart(document.getElementById('chart-rank'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: '% Desvio vs Meta',
+        data: values,
+        backgroundColor: values.map(v => v < 0 ? '#00e59b' : '#ff4b6e'),
+        borderRadius: 4
+      }]
+    },
+    options: optsRank
+  });
+}
+
+/* ─── MODAL DETALHE DA LOJA (a partir do ranking) ─── */
+function abrirModalLoja(loja, mes){
+  const d = DADOS[loja];
+  if(!d || !d[mes]){ return; }
+
+  const r = d[mes];
+  const acima = r.realizado > r.meta;
+  const pctM = r.meta > 0 ? (r.desvio/r.meta)*100 : 0;
+  const cons = r.consumo || 0;
+
+  // Comparação com mês anterior (se existir)
+  const idxMes = MESES.indexOf(mes);
+  const mesAnt = idxMes > 0 ? MESES[idxMes-1] : null;
+  const rAnt = mesAnt ? d[mesAnt] : null;
+  const varRS = rAnt ? r.realizado - rAnt.realizado : 0;
+  const varPct = rAnt && rAnt.realizado > 0 ? (varRS / rAnt.realizado) * 100 : 0;
+  const varCons = rAnt ? cons - (rAnt.consumo||0) : 0;
+  const varConsPct = rAnt && (rAnt.consumo||0) > 0 ? (varCons / (rAnt.consumo||1)) * 100 : 0;
+
+  // Cabeçalho
+  document.getElementById('modal-title').textContent = 'LOJA ' + loja;
+  document.getElementById('modal-sub').textContent = 'Mês: ' + mes + (mesAnt ? '  ·  comparado com ' + mesAnt : '');
+
+  // KPIs do mês
+  const cardVolume = HAS_CONSUMO ? `
+      <div class="modal-kpi blue">
+        <div class="modal-kpi-label">Volume m³</div>
+        <div class="modal-kpi-val" style="color:var(--neon2)">${Math.round(cons).toLocaleString('pt-BR')}</div>
+      </div>` : '';
+
+  let html = `
+    <div class="modal-summary">
+      <div class="modal-kpi blue">
+        <div class="modal-kpi-label">Meta</div>
+        <div class="modal-kpi-val">${moneyK(r.meta)}</div>
+      </div>
+      <div class="modal-kpi warm">
+        <div class="modal-kpi-label">Realizado</div>
+        <div class="modal-kpi-val">${moneyK(r.realizado)}</div>
+      </div>
+      ${cardVolume}
+      <div class="modal-kpi ${acima?'pos':'neg'}">
+        <div class="modal-kpi-label">Desvio R$</div>
+        <div class="modal-kpi-val">${moneyK(r.desvio)}</div>
+      </div>
+      <div class="modal-kpi ${acima?'pos':'neg'}">
+        <div class="modal-kpi-label">Desvio %</div>
+        <div class="modal-kpi-val">${pct(pctM)}</div>
+      </div>
+    </div>
+
+    <div class="modal-section-title">DADOS DO MÊS</div>
+    <div class="modal-mes">
+      <div class="modal-mes-head">
+        <div class="modal-mes-name">${mes}</div>
+        <span class="tag ${acima?'tag-above':'tag-below'}">${acima?'▲ Acima da meta':'▼ Dentro da meta'}</span>
+      </div>
+      <div class="modal-mes-grid">
+        <div class="modal-mes-cell">
+          <span class="lbl">Meta</span>
+          <span class="val">${money(r.meta)}</span>
+        </div>
+        <div class="modal-mes-cell">
+          <span class="lbl">Realizado</span>
+          <span class="val">${money(r.realizado)}</span>
+        </div>
+        <div class="modal-mes-cell ${r.desvio>0?'pos':'neg'}">
+          <span class="lbl">Desvio R$</span>
+          <span class="val">${money(r.desvio)}</span>
+        </div>
+        ${HAS_CONSUMO ? `
+        <div class="modal-mes-cell">
+          <span class="lbl">Consumo m³</span>
+          <span class="val" style="color:var(--neon2)">${cons.toLocaleString('pt-BR',{maximumFractionDigits:2})}</span>
+        </div>` : ''}
+      </div>
+      ${r.justificativa
+        ? `<div class="modal-just">📝 ${esc(r.justificativa)}</div>`
+        : `<div class="modal-just-empty">Sem justificativa registrada para este mês.</div>`
+      }
+    </div>
+  `;
+
+  // Bloco comparativo com o mês anterior
+  if(rAnt){
+    html += `
+    <div class="modal-section-title">COMPARAÇÃO · ${mesAnt} → ${mes}</div>
+    <div class="modal-mes">
+      <div class="modal-mes-grid">
+        <div class="modal-mes-cell">
+          <span class="lbl">Realizado ${mesAnt.slice(0,3)}</span>
+          <span class="val">${money(rAnt.realizado)}</span>
+        </div>
+        <div class="modal-mes-cell">
+          <span class="lbl">Realizado ${mes.slice(0,3)}</span>
+          <span class="val">${money(r.realizado)}</span>
+        </div>
+        <div class="modal-mes-cell ${varRS>0?'pos':'neg'}">
+          <span class="lbl">Variação R$</span>
+          <span class="val">${(varRS>=0?'+':'')}${money(varRS)} (${pct(varPct)})</span>
+        </div>
+        ${HAS_CONSUMO ? `
+        <div class="modal-mes-cell">
+          <span class="lbl">Consumo ${mesAnt.slice(0,3)} m³</span>
+          <span class="val" style="color:var(--neon2)">${(rAnt.consumo||0).toLocaleString('pt-BR',{maximumFractionDigits:2})}</span>
+        </div>
+        <div class="modal-mes-cell">
+          <span class="lbl">Consumo ${mes.slice(0,3)} m³</span>
+          <span class="val" style="color:var(--neon2)">${cons.toLocaleString('pt-BR',{maximumFractionDigits:2})}</span>
+        </div>
+        <div class="modal-mes-cell ${varCons>0?'pos':'neg'}">
+          <span class="lbl">Variação m³</span>
+          <span class="val">${(varCons>=0?'+':'')}${varCons.toLocaleString('pt-BR',{maximumFractionDigits:2})} (${pct(varConsPct)})</span>
+        </div>` : ''}
+      </div>
+    </div>`;
+  }
+
+  document.getElementById('modal-body').innerHTML = html;
+  document.getElementById('modal-loja').classList.add('show');
+}
+
+function fecharModalLoja(){
+  document.getElementById('modal-loja').classList.remove('show');
+}
+
+// ESC fecha o modal
+document.addEventListener('keydown', e => {
+  if(e.key === 'Escape') fecharModalLoja();
+});
+
+/* ─── DETALHE ─── */
+function initDet(){
+  const sel = document.getElementById('det-loja');
+  sel.innerHTML = Object.keys(DADOS).sort((a,b) => a.localeCompare(b,undefined,{numeric:true}))
+    .map(l => `<option value="${esc(l)}">Loja ${esc(l)}</option>`).join('');
+}
+function renderDet(){
+  const loja = document.getElementById('det-loja').value;
+  if(!loja) return;
+  const sel = document.getElementById('det-mes');
+  const mes = sel && sel.value ? sel.value : MESES[MESES.length-1];
+
+  // KPIs gerais refletem o mês selecionado no detalhe
+  renderKPIs(mes);
+
+  const d = DADOS[loja];
+  const r = d[mes];
+  if(!r){
+    document.getElementById('det-content').innerHTML = '<div class="info-box">Sem dados para esta loja neste mês.</div>';
+    return;
+  }
+
+  const above = r.realizado > r.meta;
+  const pctM = r.meta > 0 ? (r.desvio/r.meta)*100 : 0;
+  const cons = r.consumo || 0;
+
+  // Mês anterior (se houver)
+  const idxMes = MESES.indexOf(mes);
+  const mesAnt = idxMes > 0 ? MESES[idxMes-1] : null;
+  const rAnt = mesAnt ? d[mesAnt] : null;
+  const varRS = rAnt ? r.realizado - rAnt.realizado : 0;
+  const varPct = rAnt && rAnt.realizado > 0 ? (varRS / rAnt.realizado) * 100 : 0;
+  const varCons = rAnt ? cons - (rAnt.consumo||0) : 0;
+  const varConsPct = rAnt && (rAnt.consumo||0) > 0 ? (varCons / (rAnt.consumo||1)) * 100 : 0;
+
+  // número de colunas da grade de KPIs
+  const kpiCols = HAS_CONSUMO ? 5 : 4;
+
+  // card extra de consumo
+  const kpiConsumo = HAS_CONSUMO ? `
+    <div class="kpi k-cyan"><div class="kpi-glow"></div><div class="kpi-top"><span class="kpi-icon">🚰</span></div><div class="kpi-val">${Math.round(cons).toLocaleString('pt-BR')}</div><div class="kpi-label">Volume m³ · ${mes}</div></div>
+  ` : '';
+
+  let html = `
+    <div class="kpi-row" style="grid-template-columns:repeat(${kpiCols},1fr);">
+      <div class="kpi k-blue"><div class="kpi-glow"></div><div class="kpi-top"><span class="kpi-icon">🎯</span></div><div class="kpi-val">${moneyK(r.meta)}</div><div class="kpi-label">Meta · ${mes}</div></div>
+      <div class="kpi k-mint"><div class="kpi-glow"></div><div class="kpi-top"><span class="kpi-icon">💧</span></div><div class="kpi-val">${moneyK(r.realizado)}</div><div class="kpi-label">Realizado · ${mes}</div></div>
+      ${kpiConsumo}
+      <div class="kpi k-${r.desvio>0?'hot':'mint'}"><div class="kpi-glow"></div><div class="kpi-top"><span class="kpi-icon">📈</span></div><div class="kpi-val">${money(r.desvio)}</div><div class="kpi-label">Desvio · ${mes}</div></div>
+      <div class="kpi k-warm"><div class="kpi-glow"></div><div class="kpi-top"><span class="kpi-icon">📊</span></div><div class="kpi-val">${pct(pctM)}</div><div class="kpi-label">% Desvio</div></div>
+    </div>
+
+    <div class="section-title">DADOS DO MÊS</div>
+    <div class="mes-card">
+      <div class="mes-head">
+        <div class="mes-name">${mes}</div>
+        <span class="tag ${above?'tag-above':'tag-below'}">${above?'▲ Acima':'▼ Dentro'}</span>
+      </div>
+      <div class="mes-row"><span class="lbl">Meta</span><span class="val">${money(r.meta)}</span></div>
+      <div class="mes-row"><span class="lbl">Realizado</span><span class="val">${money(r.realizado)}</span></div>
+      <div class="mes-row"><span class="lbl">Desvio</span><span class="val" style="color:${r.desvio>0?'var(--hot)':'var(--mint)'}">${money(r.desvio)}</span></div>
+      ${HAS_CONSUMO ? `<div class="mes-row"><span class="lbl">Consumo</span><span class="val" style="color:var(--neon2)">${cons.toLocaleString('pt-BR',{maximumFractionDigits:2})} m³</span></div>` : ''}
+      ${r.justificativa ? `<div class="mes-just">📝 ${esc(r.justificativa)}</div>` : '<div class="mes-just" style="background:rgba(74,88,128,.08);border-color:var(--rim2);color:var(--fog);font-style:italic;">Sem justificativa registrada para este mês.</div>'}
+    </div>
+  `;
+
+  // Comparação com o mês anterior (se existir)
+  if(rAnt){
+    html += `
+    <div class="section-title">COMPARAÇÃO · ${mesAnt} → ${mes}</div>
+    <div class="table-card">
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th>Indicador</th>
+            <th>${mesAnt}</th>
+            <th>${mes}</th>
+            <th>Variação</th>
+            <th>Variação %</th>
+          </tr></thead>
+          <tbody>
+            <tr>
+              <td><strong>Realizado R$</strong></td>
+              <td class="td-num">${money(rAnt.realizado)}</td>
+              <td class="td-num">${money(r.realizado)}</td>
+              <td class="${varRS>0?'td-pos':'td-neg'}">${(varRS>=0?'+':'')}${money(varRS)}</td>
+              <td class="${varRS>0?'td-pos':'td-neg'}">${pct(varPct)}</td>
+            </tr>
+            ${HAS_CONSUMO ? `
+            <tr>
+              <td><strong>Consumo m³</strong></td>
+              <td class="td-num" style="color:var(--neon2)">${(rAnt.consumo||0).toLocaleString('pt-BR',{maximumFractionDigits:2})}</td>
+              <td class="td-num" style="color:var(--neon2)">${cons.toLocaleString('pt-BR',{maximumFractionDigits:2})}</td>
+              <td class="${varCons>0?'td-pos':'td-neg'}">${(varCons>=0?'+':'')}${varCons.toLocaleString('pt-BR',{maximumFractionDigits:2})}</td>
+              <td class="${varCons>0?'td-pos':'td-neg'}">${pct(varConsPct)}</td>
+            </tr>` : ''}
+            <tr>
+              <td><strong>Desvio vs Meta</strong></td>
+              <td class="${rAnt.desvio>0?'td-pos':'td-neg'}">${money(rAnt.desvio)}</td>
+              <td class="${r.desvio>0?'td-pos':'td-neg'}">${money(r.desvio)}</td>
+              <td class="td-num">—</td>
+              <td class="td-num">—</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    ${varRS > 0 && !r.justificativa
+      ? `<div class="info-box" style="background:rgba(255,75,110,.08);border-color:rgba(255,75,110,.3);color:var(--hot);"><b>⚠ Atenção:</b> Aumento de ${money(varRS)} (${pct(varPct)}) em relação a ${mesAnt} <b>sem justificativa registrada</b>.</div>`
+      : ''}
+    `;
+  }
+
+  // Gráfico
+  html += `
+    <div class="chart-box">
+      <div class="chart-title">EVOLUÇÃO · LOJA ${esc(loja)}</div>
+      <div class="chart-inner"><canvas id="chart-det"></canvas></div>
+    </div>
+  `;
+
+  document.getElementById('det-content').innerHTML = html;
+
+  // Gráfico: sempre mostra todos os meses como contexto, destacando o mês selecionado via ponto maior
+  if(chartDet) chartDet.destroy();
+  const datasets = [
+    { label:'Meta (R$)', data: MESES.map(m => d[m]?.meta||0), borderColor:'#3d7fff', backgroundColor:'rgba(61,127,255,.1)', borderWidth:2, borderDash:[6,4], tension:.3, pointRadius: MESES.map(mm => mm===mes ? 7 : 3), yAxisID:'y' },
+    { label:'Realizado (R$)', data: MESES.map(m => d[m]?.realizado||0), borderColor:'#00e59b', backgroundColor:'rgba(0,229,155,.2)', borderWidth:3, tension:.3, fill:false, pointRadius: MESES.map(mm => mm===mes ? 8 : 4), yAxisID:'y' }
+  ];
+  if(HAS_CONSUMO){
+    datasets.push({
+      label:'Consumo (m³)',
+      data: MESES.map(m => d[m]?.consumo||0),
+      borderColor:'#00c9ff', backgroundColor:'rgba(0,201,255,.15)',
+      borderWidth:2, tension:.3, fill:false, pointRadius: MESES.map(mm => mm===mes ? 7 : 3),
+      yAxisID:'yCons', borderDash:[2,2]
+    });
+  }
+  const optsDet = chartOpts();
+  if(HAS_CONSUMO){
+    optsDet.scales.yCons = {
+      position: 'right',
+      ticks: { color:'#4a5880', font:{family:'Outfit',size:10},
+        callback: v => Math.round(v).toLocaleString('pt-BR') + ' m³' },
+      grid: { drawOnChartArea: false }
+    };
+  }
+  chartDet = new Chart(document.getElementById('chart-det'), {
+    type: 'line',
+    data: { labels: MESES, datasets },
+    options: optsDet
+  });
+}
+
+/* ─── JUSTIFICATIVAS ─── */
+function renderJust(){
+  const regs = [];
+  Object.keys(DADOS).forEach(loja => MESES.forEach(m => {
+    const d = DADOS[loja][m];
+    if(d && d.justificativa && d.justificativa.trim()) regs.push({loja, m, ...d});
+  }));
+  regs.sort((a,b) => b.desvio - a.desvio);
+
+  const nCols = HAS_CONSUMO ? 7 : 6;
+  const tbody = document.getElementById('tbody-just');
+  if(!regs.length){
+    tbody.innerHTML = `<tr><td colspan="${nCols}" class="empty-cell"><span class="empty-icon">📝</span>Nenhuma justificativa</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = regs.map(r => `
+    <tr>
+      <td class="td-loja">${esc(r.loja)}</td>
+      <td>${r.m}</td>
+      <td class="td-num">${money(r.meta)}</td>
+      <td class="td-num">${money(r.realizado)}</td>
+      <td class="col-consumo td-num" style="color:var(--neon2)">${(r.consumo||0).toLocaleString('pt-BR',{maximumFractionDigits:2})}</td>
+      <td class="${r.desvio>0?'td-pos':'td-neg'}">${money(r.desvio)}</td>
+      <td class="td-justif">${esc(r.justificativa)}</td>
+    </tr>
+  `).join('');
+}
+
+/* ─── CHART DEFAULTS (tema dark) ─── */
+function chartOpts(extra){
+  extra = extra || {};
+  const opts = {
+    responsive: true,
+    maintainAspectRatio: false,
+    indexAxis: extra.indexAxis || 'x',
+    // padding para os rótulos (datalabels) não serem cortados
+    layout: { padding: { top: 18, right: 40, bottom: 4, left: 4 } },
+    plugins: {
+      legend: extra.legend === false ? { display:false } : { position:'top', labels:{ color:'#8899cc', font:{family:'Outfit', size:11}, boxWidth:12 } },
+      tooltip: {
+        backgroundColor:'#10152a', borderColor:'#2a375e', borderWidth:1, titleColor:'#e8f0ff',
+        bodyColor:'#8899cc', padding:10, titleFont:{family:'Outfit',weight:'600'},
+        callbacks: extra.isPct ? {
+          label: ctx => ctx.dataset.label + ': ' + ctx.parsed.x.toFixed(1) + '%'
+        } : {
+          label: ctx => ctx.dataset.label + ': R$ ' + Number(ctx.parsed.y||ctx.parsed.x||0).toLocaleString('pt-BR',{minimumFractionDigits:2})
+        }
+      }
+    },
+    scales: {
+      x: { ticks:{ color:'#4a5880', font:{family:'Outfit',size:10} }, grid:{ color:'rgba(30,40,69,.4)' } },
+      y: { ticks:{ color:'#4a5880', font:{family:'Outfit',size:10},
+        callback: v => extra.isPct ? v+'%' : (Math.abs(v)>=1000 ? 'R$'+(v/1000).toFixed(0)+'k' : 'R$'+v) },
+        grid:{ color:'rgba(30,40,69,.4)' } }
+    }
+  };
+  return opts;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   IMPORTAÇÃO DE PLANILHA XLSX
+   ═══════════════════════════════════════════════════════════ */
+
+/* normaliza string de mês removendo acentos e deixando maiúsculo */
+function normMes(s){
+  return String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .toUpperCase().trim();
+}
+/* mapa de mês normalizado -> mês canônico com acento */
+const MAP_MES = {
+  'JANEIRO':'JANEIRO','FEVEREIRO':'FEVEREIRO','MARCO':'MARÇO','ABRIL':'ABRIL',
+  'MAIO':'MAIO','JUNHO':'JUNHO','JULHO':'JULHO','AGOSTO':'AGOSTO',
+  'SETEMBRO':'SETEMBRO','OUTUBRO':'OUTUBRO','NOVEMBRO':'NOVEMBRO','DEZEMBRO':'DEZEMBRO',
+  'JAN':'JANEIRO','FEV':'FEVEREIRO','MAR':'MARÇO','ABR':'ABRIL','MAI':'MAIO',
+  'JUN':'JUNHO','JUL':'JULHO','AGO':'AGOSTO','SET':'SETEMBRO','OUT':'OUTUBRO',
+  'NOV':'NOVEMBRO','DEZ':'DEZEMBRO'
+};
+/* converte valor numérico aceitando string "1.234,56" ou número nativo */
+function parseNum(v){
+  if(v === null || v === undefined || v === '') return 0;
+  if(typeof v === 'number') return v;
+  let s = String(v).trim().replace(/R\$\s?/gi,'').replace(/\s/g,'');
+  // se tem vírgula e ponto, vírgula é decimal (BR)
+  if(s.includes(',') && s.includes('.')){
+    s = s.replace(/\./g,'').replace(',','.');
+  } else if(s.includes(',')){
+    s = s.replace(',','.');
+  }
+  const n = parseFloat(s);
+  return isNaN(n) ? 0 : n;
+}
+/* encontra o nome da coluna na linha header aceitando variações */
+function findCol(headers, variantes){
+  const norm = h => normMes(h).replace(/[^A-Z0-9]/g,'');
+  const alvos = variantes.map(norm);
+  for(let i=0;i<headers.length;i++){
+    if(alvos.includes(norm(headers[i]))) return i;
+  }
+  return -1;
+}
+
+function handleImport(file){
+  if(!file) return;
+  setStatus('Lendo arquivo…','');
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const wb = XLSX.read(e.target.result, { type:'array' });
+      const sheet = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(sheet, { header:1, defval:'' });
+      if(!rows.length) throw new Error('Planilha vazia');
+
+      // Detectar linha do header (primeira linha com "Loja" e "Mês")
+      let headerIdx = -1;
+      for(let i=0;i<Math.min(rows.length,10);i++){
+        const row = rows[i].map(c => normMes(c));
+        if(row.some(c => c === 'LOJA') && row.some(c => ['MES','MÊS'].includes(c) || c.startsWith('MES'))){
+          headerIdx = i; break;
+        }
+      }
+      if(headerIdx === -1) throw new Error('Cabeçalho não encontrado. Esperado: Loja, Mês, Meta, Realizado, Desvio, Justificativa');
+
+      const headers = rows[headerIdx];
+      const iLoja  = findCol(headers, ['Loja','LOJA']);
+      const iMes   = findCol(headers, ['Mês','Mes','MES']);
+      const iMeta  = findCol(headers, ['Meta','META']);
+      const iReal  = findCol(headers, ['Realizado','REALIZADO']);
+      const iDesv  = findCol(headers, ['Desvio','DESVIO']);
+      const iJust  = findCol(headers, ['Justificativa','JUSTIFICATIVA','Justificação']);
+      const iCons  = findCol(headers, ['Consumo','CONSUMO','Consumo m3','ConsumoM3','Consumo (m3)','M3','m³','Volume']);
+
+      if(iLoja<0 || iMes<0 || iMeta<0 || iReal<0){
+        throw new Error('Colunas obrigatórias ausentes (Loja, Mês, Meta, Realizado)');
+      }
+
+      const novoDados = {};
+      const mesesEncontrados = new Set();
+      let nLinhas = 0;
+      let temConsumoVal = false;
+
+      for(let i=headerIdx+1; i<rows.length; i++){
+        const r = rows[i];
+        const lojaRaw = r[iLoja];
+        if(lojaRaw === '' || lojaRaw === null || lojaRaw === undefined) continue;
+
+        const loja = String(lojaRaw).trim();
+        // ignorar linha de totais
+        if(/^total/i.test(loja)) continue;
+
+        const mesNorm = normMes(r[iMes]);
+        const mes = MAP_MES[mesNorm];
+        if(!mes) continue;
+
+        const meta = parseNum(r[iMeta]);
+        const real = parseNum(r[iReal]);
+        const desvio = iDesv >= 0 ? parseNum(r[iDesv]) : (real - meta);
+        const justif = iJust >= 0 ? String(r[iJust]||'').trim() : '';
+        const consumo = iCons >= 0 ? parseNum(r[iCons]) : 0;
+        if(consumo > 0) temConsumoVal = true;
+
+        if(!novoDados[loja]) novoDados[loja] = {};
+        novoDados[loja][mes] = { meta, realizado: real, desvio, justificativa: justif, consumo };
+        mesesEncontrados.add(mes);
+        nLinhas++;
+      }
+
+      if(nLinhas === 0) throw new Error('Nenhuma linha válida encontrada');
+
+      // Ordenar meses conforme ordem canônica
+      MESES = MESES_VALIDOS.filter(m => mesesEncontrados.has(m));
+      DADOS = novoDados;
+      HAS_CONSUMO = iCons >= 0 && temConsumoVal;
+
+      onImportSuccess(file.name, Object.keys(DADOS).length, nLinhas);
+    } catch(err){
+      setStatus('❌ Erro: ' + err.message, 'err');
+      console.error(err);
+    }
+  };
+  reader.onerror = () => setStatus('❌ Falha ao ler arquivo', 'err');
+  reader.readAsArrayBuffer(file);
+}
+
+function onImportSuccess(nome, nLojas, nLinhas){
+  // esconder empty-state, mostrar conteúdo principal
+  document.getElementById('empty-state').classList.add('hide');
+  document.getElementById('main-content').classList.remove('hide');
+  document.getElementById('btn-clear').style.display = '';
+  document.getElementById('btn-pptx').style.display = '';
+  // marca body para controlar visibilidade das colunas de consumo
+  document.body.classList.toggle('has-consumo', HAS_CONSUMO);
+  // status topbar
+  document.getElementById('status-dot').classList.remove('off');
+  const sufixo = HAS_CONSUMO ? ' · m³ detectado' : '';
+  document.getElementById('status-label').textContent = `${nLojas} lojas · ${MESES.length} ${MESES.length===1?'mês':'meses'}${sufixo}`;
+  setStatus(`✓ ${nome} importado · ${nLojas} lojas · ${nLinhas} registros${HAS_CONSUMO?' · coluna Consumo detectada':''}`, 'ok');
+  // popular selects
+  popularSelects();
+  // renderizar tudo
+  renderKPIs();
+  initDet();
+  renderComp();
+  // voltar para primeira aba
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-comp').classList.add('active');
+  document.querySelector('.tab-btn').classList.add('active');
+}
+
+function popularSelects(){
+  const mkOpts = (meses, defaultIdx) =>
+    meses.map((m,i) => `<option value="${m}"${i===defaultIdx?' selected':''}>${m}</option>`).join('');
+
+  // Mês anterior: penúltimo (ou primeiro se só tiver 1)
+  const idxAnt = MESES.length >= 2 ? MESES.length - 2 : 0;
+  // Mês atual: último
+  const idxAtu = MESES.length - 1;
+
+  document.getElementById('m-ant').innerHTML   = mkOpts(MESES, idxAnt);
+  document.getElementById('m-atu').innerHTML   = mkOpts(MESES, idxAtu);
+  document.getElementById('m-todas').innerHTML = mkOpts(MESES, idxAtu);
+  document.getElementById('m-rank').innerHTML  = mkOpts(MESES, idxAtu);
+  document.getElementById('det-mes').innerHTML = mkOpts(MESES, idxAtu);
+}
+
+function setStatus(msg, cls){
+  const bar = document.getElementById('status-bar');
+  bar.innerHTML = cls ? `<span class="${cls}">${msg}</span>` : msg;
+}
+
+function limparTudo(){
+  if(!confirm('Descartar dados importados?')) return;
+  DADOS = {};
+  MESES = [];
+  HAS_CONSUMO = false;
+  document.body.classList.remove('has-consumo');
+  document.getElementById('empty-state').classList.remove('hide');
+  document.getElementById('main-content').classList.add('hide');
+  document.getElementById('btn-clear').style.display = 'none';
+  document.getElementById('btn-pptx').style.display = 'none';
+  document.getElementById('status-dot').classList.add('off');
+  document.getElementById('status-label').textContent = 'Nenhuma planilha carregada';
+  document.getElementById('xlsx-input').value = '';
+  setStatus('','');
+  // destruir gráficos
+  if(chartComp){ chartComp.destroy(); chartComp=null; }
+  if(chartRank){ chartRank.destroy(); chartRank=null; }
+  if(chartDet){ chartDet.destroy(); chartDet=null; }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   GERAR APRESENTAÇÃO PPTX (estilo Mart Minas)
+   ═══════════════════════════════════════════════════════════ */
+function gerarApresentacao(){
+  if(!MESES.length){ alert('Importe a planilha primeiro.'); return; }
+
+  // Detecta a biblioteca independente de como foi exposta no window
+  const PptxLib = window.PptxGenJS || window.pptxgen || window.Pptxgen;
+  if(typeof PptxLib !== 'function'){
+    alert('Biblioteca PptxGenJS não carregou. Verifique sua conexão e recarregue a página.');
+    console.error('PptxGenJS não disponível', { PptxGenJS: window.PptxGenJS, pptxgen: window.pptxgen });
+    return;
+  }
+
+  setStatus('Gerando apresentação…','');
+
+  // Paleta Mart Minas
+  const COR = {
+    verde:      '00A859',
+    verdeEscuro:'00703C',
+    azulEscuro: '0B2A3E',
+    branco:     'FFFFFF',
+    cinzaTxt:   '1A1A1A',
+    cinzaClaro: 'F5F5F5',
+    vermelho:   'E63946',
+    verdeClaro: 'D4EFDF'
+  };
+
+  // Calcular dados do último mês + mês anterior (para mesmas lojas)
+  const mesAtual = MESES[MESES.length-1];
+  const mesAnt   = MESES.length >= 2 ? MESES[MESES.length-2] : null;
+  const lojas = Object.keys(DADOS);
+
+  // Totais mês atual
+  let totMeta = 0, totReal = 0, totCons = 0, nJust = 0, nAcima = 0, nDentro = 0;
+  lojas.forEach(l => {
+    const r = DADOS[l][mesAtual];
+    if(r){
+      totMeta += r.meta; totReal += r.realizado;
+      totCons += (r.consumo || 0);
+      if(r.justificativa) nJust++;
+      if(r.meta > 0){
+        if(r.realizado > r.meta) nAcima++; else nDentro++;
+      }
+    }
+  });
+  const totDesv = totReal - totMeta;
+  const pctTot = totMeta > 0 ? (totDesv/totMeta)*100 : 0;
+
+  // Mesmas Lojas = presentes em todos os meses com meta > 0
+  const mesmas = lojas.filter(l => MESES.every(m => {
+    const r = DADOS[l][m]; return r && r.meta > 0;
+  }));
+  let mlMeta=0, mlReal=0;
+  mesmas.forEach(l => {
+    const r = DADOS[l][mesAtual];
+    if(r){ mlMeta += r.meta; mlReal += r.realizado; }
+  });
+  const mlDesv = mlReal - mlMeta;
+  const mlPct = mlMeta > 0 ? (mlDesv/mlMeta)*100 : 0;
+
+  // Ranking: mais eficientes (menor % desvio vs meta) e maior estouro
+  const rows = lojas.map(l => {
+    const r = DADOS[l][mesAtual];
+    if(!r || r.meta <= 0) return null;
+    return { loja: l, meta: r.meta, real: r.realizado,
+      desv: r.realizado - r.meta,
+      pctD: ((r.realizado - r.meta)/r.meta)*100,
+      cons: r.consumo || 0, just: r.justificativa || '' };
+  }).filter(x => x);
+
+  // Top eficientes: maior economia em R$ (desvio mais negativo em módulo) — ordenação por desvio crescente
+  // Rankings FINANCEIROS: ordenados do MAIOR para o MENOR em valor absoluto
+  // topEf: quem mais economizou (desvio mais negativo) no topo
+  // topInef: quem mais estourou (desvio mais positivo) no topo
+  const topEf   = [...rows].sort((a,b) => a.desv - b.desv).slice(0,10);
+  const topInef = [...rows].sort((a,b) => b.desv - a.desv).slice(0,10);
+
+  // Rankings de CONSUMO m³ (só fazem sentido se a planilha tiver a coluna)
+  // topConsBaixo: quem consumiu menos no topo (crescente: menor primeiro)
+  // topConsAlto: quem consumiu mais no topo (decrescente: maior primeiro)
+  const rowsCons = rows.filter(r => r.cons > 0);
+  const topConsBaixo = [...rowsCons].sort((a,b) => a.cons - b.cons).slice(0,10);
+  const topConsAlto  = [...rowsCons].sort((a,b) => b.cons - a.cons).slice(0,10);
+
+  // Helpers
+  const money = v => 'R$ ' + Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2, maximumFractionDigits:2});
+  const moneyNoRS = v => Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:0, maximumFractionDigits:0});
+  const pctStr = v => (v>=0?'+':'') + v.toFixed(2).replace('.',',') + '%';
+  const mesCap = s => s.charAt(0) + s.slice(1).toLowerCase(); // MARÇO -> Março
+
+  // Capitalizar ano pela data atual (usar ano atual)
+  const ano = new Date().getFullYear();
+  const mesLabel = mesCap(mesAtual) + '/' + ano;
+
+  // ── Inicializar PPTX ──
+  const pres = new PptxLib();
+  pres.layout = 'LAYOUT_WIDE'; // 13.33 x 7.5 in
+  pres.title = 'Fechamento Água - ' + mesLabel;
+  pres.author = 'Aqua Control';
+
+  // Master: barra lateral esquerda verde + logo + footer
+  const addBarra = (slide, titulo) => {
+    // Barra verde lateral
+    slide.addShape(pres.ShapeType.rect, { x:0, y:0, w:0.55, h:7.5, fill:{color:COR.verde}, line:{type:'none'} });
+    // Texto rotacionado
+    slide.addText('ÁGUA CONSUMO E VALOR', {
+      x:-1.5, y:3.2, w:4.2, h:0.4,
+      fontSize:14, bold:true, color:COR.branco, fontFace:'Calibri',
+      align:'center', rotate:270
+    });
+    // Título do slide
+    if(titulo){
+      slide.addText(titulo, {
+        x:0.9, y:0.35, w:12, h:1.1,
+        fontSize:26, bold:true, color:COR.azulEscuro, fontFace:'Calibri',
+        align:'left', valign:'top'
+      });
+    }
+    // Rodapé: barra escura
+    slide.addShape(pres.ShapeType.rect, { x:0.55, y:6.95, w:12.78, h:0.55, fill:{color:COR.azulEscuro}, line:{type:'none'} });
+    slide.addText([
+      { text:'Mart Minas', options:{ bold:true, color:COR.verde, fontSize:12 } },
+      { text:'   &   ', options:{ color:COR.branco, fontSize:12 } },
+      { text:'DOM Atacadista', options:{ bold:true, color:COR.branco, fontSize:12 } }
+    ], { x:4.5, y:6.95, w:4.5, h:0.55, align:'center', valign:'middle', fontFace:'Calibri' });
+  };
+
+  // ══ SLIDE 1 ══ Capa
+  const s1 = pres.addSlide();
+  s1.background = { color: COR.branco };
+  // Gradiente verde sob o título
+  s1.addShape(pres.ShapeType.rect, { x:0, y:0, w:13.33, h:7.5, fill:{color:COR.branco}, line:{type:'none'} });
+  s1.addShape(pres.ShapeType.rect, { x:6.5, y:0, w:6.83, h:7.5, fill:{color:COR.verde}, line:{type:'none'} });
+  s1.addShape(pres.ShapeType.rect, { x:5.5, y:0, w:1.5, h:7.5, fill:{color:COR.verdeEscuro}, line:{type:'none'} });
+  // Barra lateral + texto rotacionado
+  s1.addShape(pres.ShapeType.rect, { x:0, y:0, w:0.55, h:7.5, fill:{color:COR.verde}, line:{type:'none'} });
+  s1.addText('ÁGUA CONSUMO E VALOR', {
+    x:-1.5, y:3.2, w:4.2, h:0.4,
+    fontSize:14, bold:true, color:COR.branco, fontFace:'Calibri',
+    align:'center', rotate:270
+  });
+  // Título grande
+  s1.addText('ÁGUA\nCONSUMO\nE VALOR', {
+    x:1.0, y:1.5, w:4.5, h:3.5,
+    fontSize:48, bold:true, color:COR.azulEscuro, fontFace:'Calibri',
+    align:'left', valign:'middle'
+  });
+  s1.addText('Análise de Eficiência, Controle Orçamentário e Ranking Operacional', {
+    x:1.0, y:5.0, w:4.5, h:1.0,
+    fontSize:14, color:COR.azulEscuro, fontFace:'Calibri', italic:true,
+    align:'left'
+  });
+  s1.addText(mesLabel, {
+    x:1.0, y:5.9, w:4.5, h:0.5,
+    fontSize:18, bold:true, color:COR.verde, fontFace:'Calibri'
+  });
+
+  // ══ SLIDE 2 ══ Sumário Executivo
+  const s2 = pres.addSlide();
+  s2.background = { color: COR.branco };
+  const acima = totDesv > 0;
+  const tituloS2 = acima
+    ? 'Sumário Executivo: O orçamento de valor global foi estourado em ' + mesCap(mesAtual) + '.'
+    : 'Sumário Executivo: A meta de valor global foi atingida em ' + mesCap(mesAtual) + '.';
+  addBarra(s2, tituloS2);
+
+  // Texto explicativo esquerda
+  const txtDescr = acima
+    ? [{text:'O ', options:{fontSize:18}},
+       {text:'Valor', options:{fontSize:18, bold:true}},
+       {text:' de Água das lojas em ' + mesLabel + ' foi concluído com resultado ', options:{fontSize:18}},
+       {text:'acima da meta', options:{fontSize:18, bold:true}},
+       {text:' orçada, exigindo plano de ação nas unidades com maior desvio.', options:{fontSize:18}}]
+    : [{text:'O ', options:{fontSize:18}},
+       {text:'Valor', options:{fontSize:18, bold:true}},
+       {text:' de Água das lojas em ' + mesLabel + ' foi concluído com resultado ', options:{fontSize:18}},
+       {text:'abaixo da meta', options:{fontSize:18, bold:true}},
+       {text:' orçada, mantendo a trajetória de controle e eficiência.', options:{fontSize:18}}];
+  s2.addText(txtDescr, {
+    x:0.9, y:1.9, w:5.5, h:3.5, color:COR.azulEscuro, fontFace:'Calibri', valign:'top'
+  });
+
+  // Caixa de KPIs direita (com borda arredondada simulada)
+  const boxX = 7.0, boxY = 1.8, boxW = 5.8, boxH = 4.7;
+  s2.addShape(pres.ShapeType.roundRect, { x:boxX, y:boxY, w:boxW, h:boxH,
+    fill:{color:COR.branco}, line:{color:COR.cinzaClaro, width:1.5}, rectRadius: 0.12 });
+
+  // KPI grande variação
+  const corPct = acima ? COR.vermelho : COR.verde;
+  s2.addText(pctStr(pctTot), {
+    x:boxX+0.2, y:boxY+0.25, w:3.0, h:1.2,
+    fontSize:54, bold:true, color:corPct, fontFace:'Calibri', align:'left'
+  });
+  s2.addText('Variação Total (' + mesAtual.slice(0,3) + ' vs Meta)', {
+    x:boxX+0.2, y:boxY+1.3, w:3.3, h:0.35,
+    fontSize:11, color:COR.azulEscuro, fontFace:'Calibri'
+  });
+  // Badge meta atingida / não atingida
+  const badgeTxt = acima ? 'META NÃO ATINGIDA' : 'META ATINGIDA';
+  const badgeColor = acima ? COR.vermelho : COR.verde;
+  s2.addShape(pres.ShapeType.roundRect, {
+    x:boxX+3.6, y:boxY+0.35, w:2.0, h:0.55,
+    fill:{color:badgeColor}, line:{type:'none'}, rectRadius:0.08
+  });
+  s2.addText(badgeTxt, {
+    x:boxX+3.6, y:boxY+0.35, w:2.0, h:0.55,
+    fontSize:10, bold:true, color:COR.branco, fontFace:'Calibri', align:'center', valign:'middle'
+  });
+  // Desvio financeiro
+  s2.addText(money(Math.abs(totDesv)), {
+    x:boxX+0.2, y:boxY+1.9, w:4.0, h:0.8,
+    fontSize:34, bold:true, color:COR.azulEscuro, fontFace:'Calibri'
+  });
+  s2.addText('Desvio Financeiro (' + mesAtual.slice(0,3) + ')', {
+    x:boxX+0.2, y:boxY+2.7, w:4.0, h:0.3,
+    fontSize:11, color:COR.azulEscuro, fontFace:'Calibri'
+  });
+
+  // Linha separador
+  s2.addShape(pres.ShapeType.line, {
+    x:boxX+0.2, y:boxY+3.2, w:boxW-0.4, h:0,
+    line:{color:COR.cinzaClaro, width:1}
+  });
+
+  // Total e Mesmas Lojas
+  s2.addText([
+    {text:'Total Lojas  ', options:{fontSize:14, bold:true, color:COR.azulEscuro}},
+    {text:pctStr(pctTot), options:{fontSize:14, bold:true, color:corPct}}
+  ], { x:boxX+0.2, y:boxY+3.4, w:5.4, h:0.4, fontFace:'Calibri' });
+  s2.addText([
+    {text:'Mesmas Lojas  ', options:{fontSize:14, bold:true, color:COR.azulEscuro}},
+    {text:pctStr(mlPct), options:{fontSize:14, bold:true, color:(mlPct>0?COR.vermelho:COR.verde)}}
+  ], { x:boxX+0.2, y:boxY+3.95, w:5.4, h:0.4, fontFace:'Calibri' });
+
+  // ══ SLIDE 3 ══ Visão Total Lojas (gráfico barras)
+  const s3 = pres.addSlide();
+  s3.background = { color: COR.branco };
+  const tituloS3 = acima
+    ? 'Visão Total Lojas: O desempenho ficou acima do orçamento e requer atenção.'
+    : 'Visão Total Lojas: O desempenho permanece controlado e dentro do orçamento.';
+  addBarra(s3, tituloS3);
+
+  // Gráfico de barras
+  s3.addChart(pres.ChartType.bar, [{
+    name: 'Valor',
+    labels: ['Meta', 'Realizado'],
+    values: [totMeta, totReal]
+  }], {
+    x:0.9, y:1.7, w:7.8, h:4.3,
+    barDir:'col',
+    chartColors:[COR.azulEscuro, acima ? COR.vermelho : COR.verde],
+    chartColorsOpacity: 100,
+    showValue:true,
+    dataLabelFontSize:12, dataLabelFontBold:true,
+    dataLabelFormatCode:'"R$ "#,##0',
+    catAxisLabelFontSize:13, catAxisLabelFontBold:true,
+    valAxisLabelFontSize:10,
+    showLegend:false
+  });
+
+  // Caixa lateral com Meta/Realizado/Desvio/Variação
+  const bxS3 = { x:9.2, y:1.9, w:3.8, h:3.5 };
+  s3.addShape(pres.ShapeType.roundRect, { ...bxS3,
+    fill:{color:COR.cinzaClaro}, line:{type:'none'}, rectRadius:0.1 });
+  s3.addText([
+    {text:'Meta: ', options:{bold:true, fontSize:14, color:COR.azulEscuro}},
+    {text:money(totMeta) + '\n\n', options:{fontSize:14, color:COR.azulEscuro}},
+    {text:'Realizado: ', options:{bold:true, fontSize:14, color:COR.azulEscuro}},
+    {text:money(totReal) + '\n\n', options:{fontSize:14, color:COR.azulEscuro}},
+    {text:'Desvio: ', options:{bold:true, fontSize:14, color:COR.azulEscuro}},
+    {text:(totDesv>=0?'+':'')+money(totDesv) + '\n\n', options:{fontSize:14, color:corPct, bold:true}},
+    {text:'Variação: ', options:{bold:true, fontSize:14, color:COR.azulEscuro}},
+    {text:pctStr(pctTot), options:{fontSize:16, color:corPct, bold:true}}
+  ], { x:bxS3.x+0.2, y:bxS3.y+0.2, w:bxS3.w-0.4, h:bxS3.h-0.4, fontFace:'Calibri', valign:'top' });
+
+  const obsS3 = acima
+    ? 'O resultado aponta desvio relevante, indicando necessidade de diagnóstico específico por unidade e revisão dos controles operacionais.'
+    : 'O resultado demonstra aderência ao orçamento, reforçando a efetividade das ações de gestão energética implementadas.';
+  s3.addText(obsS3, {
+    x:0.9, y:6.15, w:12, h:0.7, fontSize:12, italic:true, color:COR.azulEscuro, fontFace:'Calibri'
+  });
+
+  // ══ SLIDE 4 ══ Mesmas Lojas
+  const s4 = pres.addSlide();
+  s4.background = { color: COR.branco };
+  addBarra(s4, 'Visão Mesmas Lojas: Perímetro comparável de ' + mesmas.length + ' lojas.');
+
+  s4.addChart(pres.ChartType.bar, [{
+    name: 'Mesmas Lojas',
+    labels: ['Meta', 'Realizado'],
+    values: [mlMeta, mlReal]
+  }], {
+    x:0.9, y:1.7, w:7.8, h:4.3,
+    barDir:'col',
+    chartColors:[COR.azulEscuro, mlDesv>0 ? COR.vermelho : COR.verde],
+    showValue:true,
+    dataLabelFontSize:12, dataLabelFontBold:true,
+    dataLabelFormatCode:'"R$ "#,##0',
+    catAxisLabelFontSize:13, catAxisLabelFontBold:true,
+    valAxisLabelFontSize:10,
+    showLegend:false
+  });
+
+  const bxS4 = { x:9.2, y:1.9, w:3.8, h:3.5 };
+  s4.addShape(pres.ShapeType.roundRect, { ...bxS4,
+    fill:{color:COR.cinzaClaro}, line:{type:'none'}, rectRadius:0.1 });
+  const mlPctCor = mlPct>0 ? COR.vermelho : COR.verde;
+  s4.addText([
+    {text:'Meta: ', options:{bold:true, fontSize:14, color:COR.azulEscuro}},
+    {text:money(mlMeta) + '\n\n', options:{fontSize:14, color:COR.azulEscuro}},
+    {text:'Realizado: ', options:{bold:true, fontSize:14, color:COR.azulEscuro}},
+    {text:money(mlReal) + '\n\n', options:{fontSize:14, color:COR.azulEscuro}},
+    {text:'Desvio: ', options:{bold:true, fontSize:14, color:COR.azulEscuro}},
+    {text:(mlDesv>=0?'+':'')+money(mlDesv) + '\n\n', options:{fontSize:14, color:mlPctCor, bold:true}},
+    {text:'Variação: ', options:{bold:true, fontSize:14, color:COR.azulEscuro}},
+    {text:pctStr(mlPct), options:{fontSize:16, color:mlPctCor, bold:true}}
+  ], { x:bxS4.x+0.2, y:bxS4.y+0.2, w:bxS4.w-0.4, h:bxS4.h-0.4, fontFace:'Calibri', valign:'top' });
+
+  const obsS4 = mlPct>0
+    ? 'O cenário aponta estouro relevante nas mesmas lojas, indicando que o desvio não é isolado e requer atuação em múltiplas unidades.'
+    : 'Consistência operacional no perímetro comparável. Disciplina mantida nos controles.';
+  s4.addText(obsS4, {
+    x:0.9, y:6.15, w:12, h:0.7, fontSize:12, italic:true, color:COR.azulEscuro, fontFace:'Calibri'
+  });
+
+  // ══ SLIDE 5 ══ Metodologia
+  const s5 = pres.addSlide();
+  s5.background = { color: COR.branco };
+  addBarra(s5, 'Metodologia de Ranking: O comparativo como ferramenta direcionadora.');
+
+  const etapas = [
+    { titulo:'Identificar', desc:'Mapear boas práticas nas unidades mais eficientes (Benchmark).', cor:COR.verde, icone:'🔍' },
+    { titulo:'Replicar',    desc:'Estabelecer padrões de gestão e operação baseados nos líderes.', cor:COR.verdeEscuro, icone:'🔄' },
+    { titulo:'Priorizar',   desc:'Definir plano de ação focado nas unidades com maior desvio.', cor:COR.vermelho, icone:'⚠️' }
+  ];
+  etapas.forEach((e,i) => {
+    const x = 1.0 + i*4.15;
+    // Círculo do ícone
+    s5.addShape(pres.ShapeType.ellipse, { x:x+1.2, y:2.1, w:1.2, h:1.2,
+      fill:{color:e.cor}, line:{type:'none'} });
+    s5.addText(e.icone, { x:x+1.2, y:2.1, w:1.2, h:1.2, fontSize:36, align:'center', valign:'middle' });
+    // Título
+    s5.addText(e.titulo, { x:x, y:3.5, w:3.6, h:0.5, fontSize:22, bold:true, color:COR.azulEscuro, align:'center', fontFace:'Calibri' });
+    // Descrição
+    s5.addText(e.desc, { x:x, y:4.0, w:3.6, h:1.2, fontSize:13, color:COR.azulEscuro, align:'center', fontFace:'Calibri' });
+  });
+
+  s5.addText('"O objetivo do ranking não é apenas comparativo, mas direcionador."', {
+    x:0.9, y:5.8, w:12, h:0.8, fontSize:16, italic:true, bold:true, color:COR.verdeEscuro, align:'center', fontFace:'Calibri'
+  });
+
+  // ══ SLIDE 6 ══ Top 10 mais eficientes
+  const s6 = pres.addSlide();
+  s6.background = { color: COR.branco };
+  addBarra(s6, 'Top 10 Eficiência em R$: Referência de boas práticas (Benchmarks).');
+
+  s6.addChart(pres.ChartType.bar, [{
+    name:'Economia R$',
+    labels: topEf.slice().reverse().map(x => 'Loja ' + x.loja),
+    values: topEf.slice().reverse().map(x => x.desv)
+  }], {
+    x:0.9, y:1.7, w:12, h:5.0,
+    barDir:'bar',
+    chartColors:[COR.verde],
+    showValue:true, dataLabelFontSize:10, dataLabelFontBold:true,
+    dataLabelFormatCode:'"R$ "#,##0',
+    catAxisLabelFontSize:11, catAxisLabelFontBold:true,
+    valAxisLabelFontSize:10,
+    showLegend:false
+  });
+
+  // ══ SLIDE 7 ══ Top 10 maior estouro
+  const s7 = pres.addSlide();
+  s7.background = { color: COR.branco };
+  addBarra(s7, 'Top 10 Desvio em R$ elevado: Focos prioritários de atuação.');
+
+  s7.addChart(pres.ChartType.bar, [{
+    name:'Desvio R$',
+    labels: topInef.slice().reverse().map(x => 'Loja ' + x.loja),
+    values: topInef.slice().reverse().map(x => x.desv)
+  }], {
+    x:0.9, y:1.7, w:12, h:5.0,
+    barDir:'bar',
+    chartColors:[COR.vermelho],
+    showValue:true, dataLabelFontSize:10, dataLabelFontBold:true,
+    dataLabelFormatCode:'"R$ "#,##0',
+    catAxisLabelFontSize:11, catAxisLabelFontBold:true,
+    valAxisLabelFontSize:10,
+    showLegend:false
+  });
+
+  // ══ SLIDES DE CONSUMO (m³) — só se a planilha tiver a coluna Consumo ══
+  if(HAS_CONSUMO && rowsCons.length){
+
+    // ── SLIDE 7.1 ── Top 10 menor volume (m³)
+    const s7a = pres.addSlide();
+    s7a.background = { color: COR.branco };
+    addBarra(s7a, 'Top 10 Menor Consumo em m³: Referência de eficiência hídrica.');
+
+    s7a.addChart(pres.ChartType.bar, [{
+      name: 'Volume m³',
+      labels: topConsBaixo.slice().reverse().map(x => 'Loja ' + x.loja),
+      values: topConsBaixo.slice().reverse().map(x => x.cons)
+    }], {
+      x:0.9, y:1.7, w:12, h:5.0,
+      barDir:'bar',
+      chartColors:[COR.verde],
+      showValue:true, dataLabelFontSize:10, dataLabelFontBold:true,
+      dataLabelFormatCode:'#,##0" m³"',
+      catAxisLabelFontSize:11, catAxisLabelFontBold:true,
+      valAxisLabelFontSize:10,
+      showLegend:false
+    });
+
+    // ── SLIDE 7.2 ── Top 10 maior volume (m³)
+    const s7b = pres.addSlide();
+    s7b.background = { color: COR.branco };
+    addBarra(s7b, 'Top 10 Maior Consumo em m³: Focos prioritários de atuação.');
+
+    s7b.addChart(pres.ChartType.bar, [{
+      name: 'Volume m³',
+      labels: topConsAlto.slice().reverse().map(x => 'Loja ' + x.loja),
+      values: topConsAlto.slice().reverse().map(x => x.cons)
+    }], {
+      x:0.9, y:1.7, w:12, h:5.0,
+      barDir:'bar',
+      chartColors:[COR.vermelho],
+      showValue:true, dataLabelFontSize:10, dataLabelFontBold:true,
+      dataLabelFormatCode:'#,##0" m³"',
+      catAxisLabelFontSize:11, catAxisLabelFontBold:true,
+      valAxisLabelFontSize:10,
+      showLegend:false
+    });
+  }
+
+  // ══ SLIDE 8 ══ Próximos Passos
+  const s8 = pres.addSlide();
+  s8.background = { color: COR.branco };
+  addBarra(s8, 'Próximos Passos e Manutenção de Resultados.');
+
+  const passos = [
+    { titulo:'Monitoramento Mensal', desc:'Seguimos acompanhando os indicadores mensalmente com foco na manutenção dos resultados.', cor:COR.verde },
+    { titulo:'Diagnóstico', desc:'Acompanhamento detalhado nas lojas com desvio acima de 15%.', cor:COR.verdeEscuro },
+    { titulo:'Padronização', desc:'Aplicação das práticas das lojas Benchmark para as lojas com alto consumo.', cor:COR.vermelho }
+  ];
+  passos.forEach((p,i) => {
+    const x = 1.0 + i*4.15;
+    s8.addShape(pres.ShapeType.roundRect, { x:x, y:2.0, w:3.6, h:3.8,
+      fill:{color:COR.cinzaClaro}, line:{type:'none'}, rectRadius:0.1 });
+    s8.addShape(pres.ShapeType.rect, { x:x, y:2.0, w:3.6, h:0.6,
+      fill:{color:p.cor}, line:{type:'none'} });
+    s8.addText(p.titulo, { x:x, y:2.0, w:3.6, h:0.6, fontSize:16, bold:true, color:COR.branco, align:'center', valign:'middle', fontFace:'Calibri' });
+    s8.addText(p.desc, { x:x+0.3, y:2.9, w:3.0, h:2.5, fontSize:13, color:COR.azulEscuro, fontFace:'Calibri', valign:'top' });
+  });
+
+  // ══ SLIDE 9 ══ Gestão
+  const s9 = pres.addSlide();
+  s9.background = { color: COR.branco };
+  addBarra(s9, 'Gestão de Consumo de Água: Monitoramento e Ação.');
+
+  const itens = [
+    { t:'Segmentação por regional e horário', d:'O consumo é monitorado por região, período e faixas específicas.' },
+    { t:'Meta vs. Realizado', d:'Comparação direta entre o consumo planejado e o efetivo de água.' },
+    { t:'Atuação Mensal e Captura', d:'Intervenções rápidas para reduzir desvios e otimizar recursos.' },
+    { t:'Identificação de desvios', d:'Detecção de anomalias para informar as regionais sobre comportamentos inesperados.' }
+  ];
+  itens.forEach((it,i) => {
+    const col = i % 2, row = Math.floor(i/2);
+    const x = 1.0 + col*6.2, y = 2.0 + row*2.3;
+    s9.addShape(pres.ShapeType.roundRect, { x, y, w:5.8, h:2.0,
+      fill:{color:COR.cinzaClaro}, line:{type:'none'}, rectRadius:0.1 });
+    s9.addText(it.t, { x:x+0.3, y:y+0.2, w:5.2, h:0.6, fontSize:15, bold:true, color:COR.verdeEscuro, fontFace:'Calibri' });
+    s9.addText(it.d, { x:x+0.3, y:y+0.85, w:5.2, h:1.0, fontSize:12, color:COR.azulEscuro, fontFace:'Calibri' });
+  });
+
+  // ══ SLIDE 10 ══ Obrigado
+  const s10 = pres.addSlide();
+  s10.background = { color: COR.verde };
+  s10.addShape(pres.ShapeType.rect, { x:0, y:0, w:0.55, h:7.5, fill:{color:COR.verdeEscuro}, line:{type:'none'} });
+  s10.addText('OBRIGADO', {
+    x:0.9, y:2.8, w:12, h:1.5,
+    fontSize:72, bold:true, color:COR.branco, fontFace:'Calibri', align:'center'
+  });
+  s10.addText('Análise de Gestão · ' + mesLabel, {
+    x:0.9, y:4.5, w:12, h:0.5,
+    fontSize:18, color:COR.branco, fontFace:'Calibri', align:'center', italic:true
+  });
+
+  // Salvar
+  const fileName = 'Fechamento_Agua_' + mesCap(mesAtual) + '_' + ano + '.pptx';
+  pres.writeFile({ fileName }).then(() => {
+    setStatus('✓ Apresentação gerada: ' + fileName, 'ok');
+  }).catch(err => {
+    setStatus('❌ Erro ao gerar: ' + err.message, 'err');
+    console.error(err);
+  });
+}
+
+/* Ao carregar, não faz nada. Aguarda o usuário importar. */
+</script>
+</body>
+</html>
