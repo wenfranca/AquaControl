@@ -221,6 +221,76 @@ body:not(.has-consumo) .opt-consumo { display: none !important; }
   border-radius: 4px; font-size: 11px; color: var(--fog); font-style: italic;
 }
 
+/* ─── BADGES POÇO / HIDROMETRAÇÃO ─── */
+.infra-row {
+  display: flex; flex-wrap: wrap; gap: 8px;
+  margin-top: 10px;
+}
+.infra-badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 11px; border-radius: 20px;
+  font-size: 11px; font-weight: 600; letter-spacing: .4px;
+  text-transform: uppercase;
+  border: 1px solid;
+}
+.infra-badge.yes {
+  background: rgba(0,229,155,.10);
+  border-color: rgba(0,229,155,.35);
+  color: var(--mint);
+}
+.infra-badge.no {
+  background: rgba(74,88,128,.10);
+  border-color: var(--rim2);
+  color: var(--fog);
+}
+.infra-badge .dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 6px currentColor;
+}
+.infra-badge.no .dot { box-shadow: none; opacity: .6; }
+
+/* ── versão compacta para tabelas ── */
+.infra-mini {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 10px; font-weight: 600; letter-spacing: .3px;
+  padding: 3px 7px; border-radius: 10px; border: 1px solid;
+  white-space: nowrap;
+}
+.infra-mini.yes { background: rgba(0,229,155,.10); border-color: rgba(0,229,155,.35); color: var(--mint); }
+.infra-mini.no  { background: rgba(74,88,128,.08); border-color: var(--rim2); color: var(--fog); }
+.td-infra { text-align: center; white-space: nowrap; }
+
+/* ─── MODAL ESCOLHA DE APRESENTAÇÃO ─── */
+.ppt-choice {
+  display: flex; align-items: center; gap: 16px;
+  padding: 18px; margin-bottom: 12px;
+  background: var(--panel2); border: 1px solid var(--rim);
+  border-radius: 12px; cursor: pointer; transition: all .2s;
+}
+.ppt-choice:hover {
+  border-color: var(--neon2);
+  background: rgba(0,201,255,.05);
+  transform: translateX(3px);
+  box-shadow: 0 4px 20px rgba(0,201,255,.12);
+}
+.ppt-choice:last-child { margin-bottom: 0; }
+.ppt-choice-icon {
+  font-size: 32px; line-height: 1; flex-shrink: 0;
+  width: 56px; height: 56px; border-radius: 12px;
+  background: linear-gradient(135deg, var(--neon), var(--neon2));
+  display: flex; align-items: center; justify-content: center;
+}
+.ppt-choice-text { flex: 1; min-width: 0; }
+.ppt-choice-title {
+  font-family: var(--font-display);
+  font-size: 18px; letter-spacing: 1.5px;
+  color: var(--ice); margin-bottom: 4px;
+}
+.ppt-choice-desc {
+  font-size: 12px; color: var(--mist); line-height: 1.5;
+}
+
 .rank-item { cursor: pointer; }
 .rank-item:active { transform: translateX(3px) scale(0.99); }
 
@@ -532,9 +602,11 @@ tbody td.td-justif-empty { color: var(--fog); font-style: italic; font-size: 11p
             <th>Meta</th>
             <th>Desvio R$</th>
             <th>Status</th>
+            <th>Poço</th>
+            <th>Hidrometração</th>
             <th>Justificativa</th>
           </tr></thead>
-          <tbody id="tbody-comp"><tr><td colspan="12" class="empty-cell">—</td></tr></tbody>
+          <tbody id="tbody-comp"><tr><td colspan="14" class="empty-cell">—</td></tr></tbody>
         </table>
       </div>
     </div>
@@ -570,9 +642,11 @@ tbody td.td-justif-empty { color: var(--fog); font-style: italic; font-size: 11p
             <th>% Diferença Meta</th>
             <th class="col-consumo">Consumo m³</th>
             <th>Status</th>
+            <th>Poço</th>
+            <th>Hidrometração</th>
             <th>Justificativa</th>
           </tr></thead>
-          <tbody id="tbody-todas"><tr><td colspan="8" class="empty-cell">—</td></tr></tbody>
+          <tbody id="tbody-todas"><tr><td colspan="10" class="empty-cell">—</td></tr></tbody>
         </table>
       </div>
     </div>
@@ -650,9 +724,11 @@ tbody td.td-justif-empty { color: var(--fog); font-style: italic; font-size: 11p
             <th>Realizado</th>
             <th class="col-consumo">Consumo m³</th>
             <th>Desvio R$</th>
+            <th>Poço</th>
+            <th>Hidrometração</th>
             <th>Justificativa</th>
           </tr></thead>
-          <tbody id="tbody-just"><tr><td colspan="7" class="empty-cell">—</td></tr></tbody>
+          <tbody id="tbody-just"><tr><td colspan="9" class="empty-cell">—</td></tr></tbody>
         </table>
       </div>
     </div>
@@ -673,6 +749,35 @@ tbody td.td-justif-empty { color: var(--fog); font-style: italic; font-size: 11p
       <button class="modal-close" onclick="fecharModalLoja()" title="Fechar (Esc)">✕</button>
     </div>
     <div class="modal-body" id="modal-body"></div>
+  </div>
+</div>
+
+<!-- MODAL ESCOLHA DE APRESENTAÇÃO -->
+<div class="modal-overlay" id="modal-ppt" onclick="if(event.target===this)fecharModalPPT()">
+  <div class="modal-box" style="max-width:560px;">
+    <div class="modal-head">
+      <div class="modal-head-left">
+        <div class="modal-title">GERAR APRESENTAÇÃO</div>
+        <div class="modal-sub">Escolha o tipo de relatório</div>
+      </div>
+      <button class="modal-close" onclick="fecharModalPPT()" title="Fechar (Esc)">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="ppt-choice" onclick="escolherPPT('fechamento')">
+        <div class="ppt-choice-icon">📊</div>
+        <div class="ppt-choice-text">
+          <div class="ppt-choice-title">Fechamento Mensal</div>
+          <div class="ppt-choice-desc">Relatório completo do último mês: KPIs, ranking, top eficientes vs estouros, metodologia.</div>
+        </div>
+      </div>
+      <div class="ppt-choice" onclick="escolherPPT('comparativo')">
+        <div class="ppt-choice-icon">🔄</div>
+        <div class="ppt-choice-text">
+          <div class="ppt-choice-title">Comparativo entre Meses</div>
+          <div class="ppt-choice-desc">Foco em variações: top aumentos, top reduções e análise mês a mês usando os meses selecionados na aba Comparativo.</div>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -795,6 +900,7 @@ function renderComp(){
     rows.push({ loja, realA:a.realizado, realB:b.realizado, varRS, varPct,
       consA, consB, varCons, varConsPct,
       meta:b.meta, desvio:b.desvio, justif:b.justificativa,
+      poco: b.poco, hidro: b.hidro,
       above: b.realizado > b.meta });
   });
 
@@ -809,7 +915,7 @@ function renderComp(){
 
   document.getElementById('cnt-comp').textContent = rows.length + ' registros';
 
-  const nCols = HAS_CONSUMO ? 12 : 9;
+  const nCols = HAS_CONSUMO ? 14 : 11;
   const tbody = document.getElementById('tbody-comp');
   if(!rows.length){
     tbody.innerHTML = `<tr><td colspan="${nCols}" class="empty-cell"><span class="empty-icon">🔍</span>Nenhum registro encontrado</td></tr>`;
@@ -834,6 +940,8 @@ function renderComp(){
         <td class="td-num">${money(r.meta)}</td>
         <td class="${r.desvio>0?'td-pos':'td-neg'}">${money(r.desvio)}</td>
         <td>${tag}</td>
+        <td class="td-infra"><span class="infra-mini ${r.poco?'yes':'no'}">${r.poco?'✓ Sim':'— Não'}</span></td>
+        <td class="td-infra"><span class="infra-mini ${r.hidro?'yes':'no'}">${r.hidro?'✓ Sim':'— Não'}</span></td>
         ${just}
       </tr>`;
     }).join('');
@@ -897,7 +1005,7 @@ function renderTodas(){
   if(o==='cons-asc')  rows.sort((a,b) => (a.consumo||0) - (b.consumo||0));
 
   document.getElementById('cnt-todas').textContent = rows.length + ' registros';
-  const nCols = HAS_CONSUMO ? 8 : 7;
+  const nCols = HAS_CONSUMO ? 10 : 9;
   const tbody = document.getElementById('tbody-todas');
   if(!rows.length){
     tbody.innerHTML = `<tr><td colspan="${nCols}" class="empty-cell"><span class="empty-icon">🏪</span>Nenhuma loja</td></tr>`;
@@ -912,6 +1020,8 @@ function renderTodas(){
       <td class="${r.desvio>0?'td-pos':'td-neg'}">${pct(r.pctM - 100)}</td>
       <td class="col-consumo td-num" style="color:var(--neon2)">${(r.consumo||0).toLocaleString('pt-BR',{maximumFractionDigits:2})}</td>
       <td><span class="tag ${r.above?'tag-above':'tag-below'}">${r.above?'▲ Acima':'▼ Dentro'}</span></td>
+      <td class="td-infra"><span class="infra-mini ${r.poco?'yes':'no'}">${r.poco?'✓ Sim':'— Não'}</span></td>
+      <td class="td-infra"><span class="infra-mini ${r.hidro?'yes':'no'}">${r.hidro?'✓ Sim':'— Não'}</span></td>
       ${r.justificativa ? `<td class="td-justif">${esc(r.justificativa)}</td>` : '<td class="td-justif-empty">—</td>'}
     </tr>
   `).join('');
@@ -1129,6 +1239,14 @@ function abrirModalLoja(loja, mes){
         ? `<div class="modal-just">📝 ${esc(r.justificativa)}</div>`
         : `<div class="modal-just-empty">Sem justificativa registrada para este mês.</div>`
       }
+      <div class="infra-row">
+        <span class="infra-badge ${r.poco ? 'yes' : 'no'}">
+          <span class="dot"></span>${r.poco ? '💧 Possui Poço' : '💧 Sem Poço'}
+        </span>
+        <span class="infra-badge ${r.hidro ? 'yes' : 'no'}">
+          <span class="dot"></span>${r.hidro ? '📊 Hidrometrado' : '📊 Não Hidrometrado'}
+        </span>
+      </div>
     </div>
   `;
 
@@ -1243,6 +1361,14 @@ function renderDet(){
       <div class="mes-row"><span class="lbl">Desvio</span><span class="val" style="color:${r.desvio>0?'var(--hot)':'var(--mint)'}">${money(r.desvio)}</span></div>
       ${HAS_CONSUMO ? `<div class="mes-row"><span class="lbl">Consumo</span><span class="val" style="color:var(--neon2)">${cons.toLocaleString('pt-BR',{maximumFractionDigits:2})} m³</span></div>` : ''}
       ${r.justificativa ? `<div class="mes-just">📝 ${esc(r.justificativa)}</div>` : '<div class="mes-just" style="background:rgba(74,88,128,.08);border-color:var(--rim2);color:var(--fog);font-style:italic;">Sem justificativa registrada para este mês.</div>'}
+      <div class="infra-row">
+        <span class="infra-badge ${r.poco ? 'yes' : 'no'}">
+          <span class="dot"></span>${r.poco ? '💧 Possui Poço' : '💧 Sem Poço'}
+        </span>
+        <span class="infra-badge ${r.hidro ? 'yes' : 'no'}">
+          <span class="dot"></span>${r.hidro ? '📊 Hidrometrado' : '📊 Não Hidrometrado'}
+        </span>
+      </div>
     </div>
   `;
 
@@ -1343,7 +1469,7 @@ function renderJust(){
   }));
   regs.sort((a,b) => b.desvio - a.desvio);
 
-  const nCols = HAS_CONSUMO ? 7 : 6;
+  const nCols = HAS_CONSUMO ? 9 : 8;
   const tbody = document.getElementById('tbody-just');
   if(!regs.length){
     tbody.innerHTML = `<tr><td colspan="${nCols}" class="empty-cell"><span class="empty-icon">📝</span>Nenhuma justificativa</td></tr>`;
@@ -1357,6 +1483,8 @@ function renderJust(){
       <td class="td-num">${money(r.realizado)}</td>
       <td class="col-consumo td-num" style="color:var(--neon2)">${(r.consumo||0).toLocaleString('pt-BR',{maximumFractionDigits:2})}</td>
       <td class="${r.desvio>0?'td-pos':'td-neg'}">${money(r.desvio)}</td>
+      <td class="td-infra"><span class="infra-mini ${r.poco?'yes':'no'}">${r.poco?'✓ Sim':'— Não'}</span></td>
+      <td class="td-infra"><span class="infra-mini ${r.hidro?'yes':'no'}">${r.hidro?'✓ Sim':'— Não'}</span></td>
       <td class="td-justif">${esc(r.justificativa)}</td>
     </tr>
   `).join('');
@@ -1464,6 +1592,8 @@ function handleImport(file){
       const iDesv  = findCol(headers, ['Desvio','DESVIO']);
       const iJust  = findCol(headers, ['Justificativa','JUSTIFICATIVA','Justificação']);
       const iCons  = findCol(headers, ['Consumo','CONSUMO','Consumo m3','ConsumoM3','Consumo (m3)','M3','m³','Volume']);
+      const iPoco  = findCol(headers, ['Poço','Poco','POÇO','POCO','Tem Poço','Tem Poco']);
+      const iHidro = findCol(headers, ['Hidrometração','Hidrometracao','HIDROMETRAÇÃO','HIDROMETRACAO','Hidrometrado','Hidrometrada','Hidrômetro','Hidrometro']);
 
       if(iLoja<0 || iMes<0 || iMeta<0 || iReal<0){
         throw new Error('Colunas obrigatórias ausentes (Loja, Mês, Meta, Realizado)');
@@ -1494,8 +1624,18 @@ function handleImport(file){
         const consumo = iCons >= 0 ? parseNum(r[iCons]) : 0;
         if(consumo > 0) temConsumoVal = true;
 
+        // Poço e Hidrometração: aceita "sim", "s", "1", "true", "x" como TRUE
+        const parseSN = v => {
+          if(v === true) return true;
+          if(v === false || v === '' || v == null) return false;
+          const s = String(v).trim().toLowerCase();
+          return ['sim','s','1','true','x','yes','y'].includes(s);
+        };
+        const poco  = iPoco  >= 0 ? parseSN(r[iPoco])  : false;
+        const hidro = iHidro >= 0 ? parseSN(r[iHidro]) : false;
+
         if(!novoDados[loja]) novoDados[loja] = {};
-        novoDados[loja][mes] = { meta, realizado: real, desvio, justificativa: justif, consumo };
+        novoDados[loja][mes] = { meta, realizado: real, desvio, justificativa: justif, consumo, poco, hidro };
         mesesEncontrados.add(mes);
         nLinhas++;
       }
@@ -1588,6 +1728,19 @@ function limparTudo(){
    GERAR APRESENTAÇÃO PPTX (estilo Mart Minas)
    ═══════════════════════════════════════════════════════════ */
 function gerarApresentacao(){
+  if(!MESES.length){ alert('Importe a planilha primeiro.'); return; }
+  document.getElementById('modal-ppt').classList.add('show');
+}
+function fecharModalPPT(){
+  document.getElementById('modal-ppt').classList.remove('show');
+}
+function escolherPPT(tipo){
+  fecharModalPPT();
+  if(tipo === 'fechamento')  gerarApresentacaoFechamento();
+  if(tipo === 'comparativo') gerarApresentacaoComparativo();
+}
+
+function gerarApresentacaoFechamento(){
   if(!MESES.length){ alert('Importe a planilha primeiro.'); return; }
 
   // Detecta a biblioteca independente de como foi exposta no window
@@ -2077,6 +2230,409 @@ function gerarApresentacao(){
   const fileName = 'Fechamento_Agua_' + mesCap(mesAtual) + '_' + ano + '.pptx';
   pres.writeFile({ fileName }).then(() => {
     setStatus('✓ Apresentação gerada: ' + fileName, 'ok');
+  }).catch(err => {
+    setStatus('❌ Erro ao gerar: ' + err.message, 'err');
+    console.error(err);
+  });
+}
+
+/* ═══════════════════════════════════════════════════════════
+   APRESENTAÇÃO COMPARATIVA (entre 2 meses selecionados na aba)
+   ═══════════════════════════════════════════════════════════ */
+function gerarApresentacaoComparativo(){
+  if(!MESES.length){ alert('Importe a planilha primeiro.'); return; }
+
+  const PptxLib = window.PptxGenJS || window.pptxgen || window.Pptxgen;
+  if(typeof PptxLib !== 'function'){
+    alert('Biblioteca PptxGenJS não carregou. Recarregue a página.');
+    return;
+  }
+
+  // Pegar meses selecionados na aba comparativo
+  const mAnt = document.getElementById('m-ant').value;
+  const mAtu = document.getElementById('m-atu').value;
+  if(!mAnt || !mAtu){
+    alert('Selecione os meses na aba Comparativo antes de gerar.');
+    return;
+  }
+  if(mAnt === mAtu){
+    alert('Selecione dois meses diferentes na aba Comparativo.');
+    return;
+  }
+
+  setStatus('Gerando apresentação comparativa…','');
+
+  // Paleta Mart Minas
+  const COR = {
+    verde:      '00A859',
+    verdeEscuro:'00703C',
+    azulEscuro: '0B2A3E',
+    branco:     'FFFFFF',
+    cinzaTxt:   '1A1A1A',
+    cinzaClaro: 'F5F5F5',
+    vermelho:   'E63946',
+    laranja:    'F77F00',
+    azulClaro:  'E8F4F8',
+    verdeClaro: 'D4EFDF'
+  };
+
+  // Helpers
+  const money = v => 'R$ ' + Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2, maximumFractionDigits:2});
+  const moneyK = v => {
+    const a = Math.abs(v||0);
+    if(a >= 1e6) return 'R$ ' + (v/1e6).toFixed(1).replace('.',',') + 'M';
+    if(a >= 1e3) return 'R$ ' + (v/1e3).toFixed(0) + 'k';
+    return 'R$ ' + Number(v||0).toLocaleString('pt-BR',{maximumFractionDigits:0});
+  };
+  const pctStr = v => (v>=0?'+':'') + v.toFixed(2).replace('.',',') + '%';
+  const mesCap = s => s.charAt(0) + s.slice(1).toLowerCase();
+  const ano = new Date().getFullYear();
+  const labelAnt = mesCap(mAnt);
+  const labelAtu = mesCap(mAtu);
+
+  // ── Calcular dados comparativos ──
+  const lojas = Object.keys(DADOS);
+  let rows = [];
+  lojas.forEach(loja => {
+    const a = DADOS[loja][mAnt], b = DADOS[loja][mAtu];
+    if(!a || !b) return;
+    const varRS = b.realizado - a.realizado;
+    const varPct = a.realizado > 0 ? (varRS/a.realizado)*100 : (b.realizado>0?100:0);
+    const consA = a.consumo || 0;
+    const consB = b.consumo || 0;
+    const varCons = consB - consA;
+    const varConsPct = consA > 0 ? (varCons/consA)*100 : 0;
+    rows.push({
+      loja, realA:a.realizado, realB:b.realizado, varRS, varPct,
+      consA, consB, varCons, varConsPct,
+      meta:b.meta, desvio:b.desvio,
+      justif: b.justificativa || '',
+      poco: !!b.poco, hidro: !!b.hidro,
+      above: b.realizado > b.meta
+    });
+  });
+
+  if(!rows.length){
+    alert('Não há lojas comuns aos dois meses para comparar.');
+    setStatus('Nenhuma loja em comum entre os meses.','err');
+    return;
+  }
+
+  // Totais
+  const totA = rows.reduce((s,r) => s+r.realA, 0);
+  const totB = rows.reduce((s,r) => s+r.realB, 0);
+  const totConsA = rows.reduce((s,r) => s+r.consA, 0);
+  const totConsB = rows.reduce((s,r) => s+r.consB, 0);
+  const varTot   = totB - totA;
+  const varTotPct = totA > 0 ? (varTot/totA)*100 : 0;
+  const varConsTot = totConsB - totConsA;
+  const varConsPct = totConsA > 0 ? (varConsTot/totConsA)*100 : 0;
+
+  // Splits
+  const aumentos  = rows.filter(r => r.varRS > 0.01);
+  const reducoes  = rows.filter(r => r.varRS < -0.01);
+  const estaveis  = rows.filter(r => Math.abs(r.varRS) <= 0.01);
+  const semJust   = aumentos.filter(r => !r.justif);
+
+  // Tops
+  const topAumentos = [...aumentos].sort((a,b) => b.varRS - a.varRS).slice(0,10);
+  const topReducoes = [...reducoes].sort((a,b) => a.varRS - b.varRS).slice(0,10); // mais negativo primeiro
+  const topAumentosPct = [...aumentos].sort((a,b) => b.varPct - a.varPct).slice(0,10);
+
+  // ── PPTX ──
+  const pres = new PptxLib();
+  pres.layout = 'LAYOUT_WIDE';
+  pres.title = `Comparativo Água ${labelAnt} vs ${labelAtu}`;
+  pres.author = 'Aqua Control';
+
+  const addBarra = (slide, titulo) => {
+    slide.addShape(pres.ShapeType.rect, { x:0, y:0, w:0.55, h:7.5, fill:{color:COR.verde}, line:{type:'none'} });
+    slide.addText('COMPARATIVO MENSAL', {
+      x:-1.5, y:3.2, w:4.2, h:0.4,
+      fontSize:14, bold:true, color:COR.branco, fontFace:'Calibri',
+      align:'center', rotate:270
+    });
+    if(titulo){
+      slide.addText(titulo, {
+        x:0.9, y:0.35, w:12, h:1.1,
+        fontSize:24, bold:true, color:COR.azulEscuro, fontFace:'Calibri',
+        align:'left', valign:'top'
+      });
+    }
+    slide.addShape(pres.ShapeType.rect, { x:0.55, y:6.95, w:12.78, h:0.55, fill:{color:COR.azulEscuro}, line:{type:'none'} });
+    slide.addText([
+      { text:'Mart Minas', options:{ bold:true, color:COR.verde, fontSize:12 } },
+      { text:'   &   ', options:{ color:COR.branco, fontSize:12 } },
+      { text:'DOM Atacadista', options:{ bold:true, color:COR.branco, fontSize:12 } }
+    ], { x:4.5, y:6.95, w:4.5, h:0.55, align:'center', valign:'middle', fontFace:'Calibri' });
+  };
+
+  // ══ SLIDE 1 ══ Capa
+  const s1 = pres.addSlide();
+  s1.background = { color: COR.branco };
+  s1.addShape(pres.ShapeType.rect, { x:6.5, y:0, w:6.83, h:7.5, fill:{color:COR.verde}, line:{type:'none'} });
+  s1.addShape(pres.ShapeType.rect, { x:5.5, y:0, w:1.5, h:7.5, fill:{color:COR.verdeEscuro}, line:{type:'none'} });
+  s1.addShape(pres.ShapeType.rect, { x:0, y:0, w:0.55, h:7.5, fill:{color:COR.verde}, line:{type:'none'} });
+  s1.addText('COMPARATIVO', {
+    x:0.9, y:1.8, w:5.5, h:0.7, fontSize:18, bold:true,
+    color:COR.verde, fontFace:'Calibri', letterSpacing:2
+  });
+  s1.addText('Água: variação mês a mês', {
+    x:0.9, y:2.4, w:5.5, h:1.0, fontSize:36, bold:true,
+    color:COR.azulEscuro, fontFace:'Calibri'
+  });
+  s1.addText(`${labelAnt}  →  ${labelAtu}`, {
+    x:0.9, y:3.5, w:5.5, h:0.7, fontSize:24, bold:true,
+    color:COR.verdeEscuro, fontFace:'Calibri'
+  });
+  s1.addText(`Análise das variações entre os meses de ${labelAnt} e ${labelAtu}, com foco nos maiores aumentos, reduções e desvios não justificados.`, {
+    x:0.9, y:4.5, w:5.5, h:1.5, fontSize:13, italic:true,
+    color:COR.cinzaTxt, fontFace:'Calibri'
+  });
+  s1.addText(ano, {
+    x:7.0, y:3.0, w:6.0, h:1.5, fontSize:90, bold:true,
+    color:COR.branco, fontFace:'Calibri', align:'center'
+  });
+  s1.addText('AQUA CONTROL', {
+    x:7.0, y:4.5, w:6.0, h:0.5, fontSize:16, bold:true,
+    color:COR.branco, fontFace:'Calibri', align:'center', letterSpacing:3
+  });
+
+  // ══ SLIDE 2 ══ Resumo Executivo
+  const s2 = pres.addSlide();
+  s2.background = { color: COR.branco };
+  addBarra(s2, `Resumo Executivo: ${labelAnt} vs ${labelAtu}`);
+
+  // 4 KPIs principais
+  const kpis = [
+    { titulo:`Realizado ${labelAnt}`, valor: moneyK(totA), cor: COR.azulEscuro, sub: `${rows.length} lojas` },
+    { titulo:`Realizado ${labelAtu}`, valor: moneyK(totB), cor: COR.azulEscuro, sub: `${rows.length} lojas` },
+    { titulo:'Variação Total R$', valor: (varTot>=0?'+':'')+moneyK(varTot), cor: varTot>0?COR.vermelho:COR.verde, sub: pctStr(varTotPct) },
+    { titulo:'Lojas com Aumento', valor: aumentos.length+'', cor: COR.vermelho, sub: `${reducoes.length} reduziram · ${estaveis.length} estáveis` }
+  ];
+  kpis.forEach((k,i) => {
+    const x = 0.9 + i*3.1;
+    s2.addShape(pres.ShapeType.roundRect, { x, y:1.7, w:2.9, h:1.7,
+      fill:{color:COR.cinzaClaro}, line:{type:'none'}, rectRadius:0.1 });
+    s2.addShape(pres.ShapeType.rect, { x, y:1.7, w:2.9, h:0.12,
+      fill:{color:k.cor}, line:{type:'none'} });
+    s2.addText(k.titulo, { x:x+0.15, y:1.85, w:2.6, h:0.35,
+      fontSize:11, bold:true, color:COR.cinzaTxt, fontFace:'Calibri' });
+    s2.addText(k.valor, { x:x+0.15, y:2.25, w:2.6, h:0.7,
+      fontSize:28, bold:true, color:k.cor, fontFace:'Calibri' });
+    s2.addText(k.sub, { x:x+0.15, y:2.95, w:2.6, h:0.35,
+      fontSize:10, italic:true, color:COR.cinzaTxt, fontFace:'Calibri' });
+  });
+
+  // Texto de leitura
+  const sentido = varTot > 0 ? 'aumento' : 'redução';
+  const corSent = varTot > 0 ? COR.vermelho : COR.verde;
+  s2.addShape(pres.ShapeType.roundRect, { x:0.9, y:3.7, w:12.2, h:1.1,
+    fill:{color:COR.azulClaro}, line:{type:'none'}, rectRadius:0.08 });
+  s2.addText([
+    { text:'Leitura: ', options:{ bold:true, color:COR.azulEscuro, fontSize:13 } },
+    { text:`O comparativo entre ${labelAnt} e ${labelAtu} mostra `, options:{ color:COR.cinzaTxt, fontSize:13 } },
+    { text:`${sentido} de ${moneyK(Math.abs(varTot))} `, options:{ bold:true, color:corSent, fontSize:13 } },
+    { text:`(${pctStr(varTotPct)}) no consolidado das ${rows.length} lojas em comum. `, options:{ color:COR.cinzaTxt, fontSize:13 } },
+    { text:`${aumentos.length} loja(s) tiveram aumento, ${reducoes.length} reduziram e ${semJust.length} aumentaram sem justificativa registrada.`, options:{ color:COR.cinzaTxt, fontSize:13 } }
+  ], { x:1.1, y:3.75, w:11.8, h:1.0, fontSize:13, fontFace:'Calibri', valign:'middle' });
+
+  // Mini distribuição
+  s2.addText('DISTRIBUIÇÃO DAS LOJAS', { x:0.9, y:5.0, w:12, h:0.4,
+    fontSize:14, bold:true, color:COR.azulEscuro, fontFace:'Calibri' });
+
+  const dists = [
+    { lbl:'Aumento',  n:aumentos.length, cor:COR.vermelho },
+    { lbl:'Redução',  n:reducoes.length, cor:COR.verde },
+    { lbl:'Estável',  n:estaveis.length, cor:COR.azulEscuro },
+    { lbl:'Sem Just.', n:semJust.length, cor:COR.laranja }
+  ];
+  dists.forEach((d,i) => {
+    const x = 0.9 + i*3.1;
+    s2.addShape(pres.ShapeType.roundRect, { x, y:5.5, w:2.9, h:1.2,
+      fill:{color:COR.branco}, line:{color:d.cor, width:1.5}, rectRadius:0.08 });
+    s2.addText(d.n+'', { x:x, y:5.55, w:2.9, h:0.7,
+      fontSize:32, bold:true, color:d.cor, fontFace:'Calibri', align:'center' });
+    s2.addText(d.lbl, { x:x, y:6.25, w:2.9, h:0.4,
+      fontSize:12, color:COR.cinzaTxt, fontFace:'Calibri', align:'center' });
+  });
+
+  // ══ SLIDE 3 ══ Top 10 Aumentos R$
+  const s3 = pres.addSlide();
+  s3.background = { color: COR.branco };
+  addBarra(s3, `Top 10 Aumentos em R$: ${labelAnt} → ${labelAtu}`);
+
+  if(topAumentos.length){
+    s3.addChart(pres.ChartType.bar, [{
+      name: 'Aumento R$',
+      labels: topAumentos.slice().reverse().map(r => 'Loja ' + r.loja),
+      values: topAumentos.slice().reverse().map(r => r.varRS)
+    }], {
+      x:0.9, y:1.7, w:12, h:5.0,
+      barDir:'bar',
+      chartColors:[COR.vermelho],
+      showValue:true, dataLabelFontSize:10, dataLabelFontBold:true,
+      dataLabelFormatCode:'"R$ "#,##0',
+      catAxisLabelFontSize:11, catAxisLabelFontBold:true,
+      valAxisLabelFontSize:10,
+      showLegend:false
+    });
+  } else {
+    s3.addText('Nenhuma loja apresentou aumento entre os meses comparados.',
+      { x:0.9, y:3.5, w:12, h:0.6, fontSize:16, italic:true,
+        color:COR.cinzaTxt, fontFace:'Calibri', align:'center' });
+  }
+
+  // ══ SLIDE 4 ══ Top 10 Reduções R$
+  const s4 = pres.addSlide();
+  s4.background = { color: COR.branco };
+  addBarra(s4, `Top 10 Reduções em R$: ${labelAnt} → ${labelAtu}`);
+
+  if(topReducoes.length){
+    s4.addChart(pres.ChartType.bar, [{
+      name: 'Redução R$',
+      labels: topReducoes.slice().reverse().map(r => 'Loja ' + r.loja),
+      values: topReducoes.slice().reverse().map(r => r.varRS) // valores negativos
+    }], {
+      x:0.9, y:1.7, w:12, h:5.0,
+      barDir:'bar',
+      chartColors:[COR.verde],
+      showValue:true, dataLabelFontSize:10, dataLabelFontBold:true,
+      dataLabelFormatCode:'"R$ "#,##0',
+      catAxisLabelFontSize:11, catAxisLabelFontBold:true,
+      valAxisLabelFontSize:10,
+      showLegend:false
+    });
+  } else {
+    s4.addText('Nenhuma loja apresentou redução entre os meses comparados.',
+      { x:0.9, y:3.5, w:12, h:0.6, fontSize:16, italic:true,
+        color:COR.cinzaTxt, fontFace:'Calibri', align:'center' });
+  }
+
+  // ══ SLIDE 5 ══ Top 10 Aumentos em % (relativos)
+  const s5 = pres.addSlide();
+  s5.background = { color: COR.branco };
+  addBarra(s5, `Top 10 Aumentos em %: variação relativa`);
+
+  if(topAumentosPct.length){
+    s5.addChart(pres.ChartType.bar, [{
+      name: 'Aumento %',
+      labels: topAumentosPct.slice().reverse().map(r => 'Loja ' + r.loja),
+      values: topAumentosPct.slice().reverse().map(r => Number(r.varPct.toFixed(1)))
+    }], {
+      x:0.9, y:1.7, w:12, h:4.5,
+      barDir:'bar',
+      chartColors:[COR.laranja],
+      showValue:true, dataLabelFontSize:10, dataLabelFontBold:true,
+      dataLabelFormatCode:'0.0"%"',
+      catAxisLabelFontSize:11, catAxisLabelFontBold:true,
+      valAxisLabelFontSize:10,
+      showLegend:false
+    });
+    s5.addText('Variação % é mais sensível em lojas pequenas. Use junto com a variação absoluta (R$) para priorizar ações.', {
+      x:0.9, y:6.3, w:12, h:0.5, fontSize:11, italic:true,
+      color:COR.cinzaTxt, fontFace:'Calibri', align:'center'
+    });
+  } else {
+    s5.addText('Nenhuma loja com aumento percentual.',
+      { x:0.9, y:3.5, w:12, h:0.6, fontSize:16, italic:true,
+        color:COR.cinzaTxt, fontFace:'Calibri', align:'center' });
+  }
+
+  // ══ SLIDE 6 ══ Tabela: Aumentos sem justificativa (focos prioritários)
+  const s6 = pres.addSlide();
+  s6.background = { color: COR.branco };
+  addBarra(s6, `Aumentos sem justificativa: ${semJust.length} loja(s) para tratativa`);
+
+  if(semJust.length){
+    const topSemJust = [...semJust].sort((a,b) => b.varRS - a.varRS).slice(0,12);
+    const dadosTabela = [
+      [
+        { text:'Loja', options:{ bold:true, color:COR.branco, fill:{color:COR.azulEscuro}, fontSize:12, align:'center' } },
+        { text:`Real. ${labelAnt}`, options:{ bold:true, color:COR.branco, fill:{color:COR.azulEscuro}, fontSize:11, align:'center' } },
+        { text:`Real. ${labelAtu}`, options:{ bold:true, color:COR.branco, fill:{color:COR.azulEscuro}, fontSize:11, align:'center' } },
+        { text:'Variação R$', options:{ bold:true, color:COR.branco, fill:{color:COR.azulEscuro}, fontSize:11, align:'center' } },
+        { text:'Variação %', options:{ bold:true, color:COR.branco, fill:{color:COR.azulEscuro}, fontSize:11, align:'center' } },
+        { text:'Poço', options:{ bold:true, color:COR.branco, fill:{color:COR.azulEscuro}, fontSize:11, align:'center' } },
+        { text:'Hidrom.', options:{ bold:true, color:COR.branco, fill:{color:COR.azulEscuro}, fontSize:11, align:'center' } }
+      ]
+    ];
+    topSemJust.forEach((r,i) => {
+      const fill = i%2===0 ? COR.branco : COR.cinzaClaro;
+      dadosTabela.push([
+        { text: r.loja, options:{ bold:true, fontSize:10, fill:{color:fill}, align:'center' } },
+        { text: money(r.realA), options:{ fontSize:10, fill:{color:fill}, align:'right' } },
+        { text: money(r.realB), options:{ fontSize:10, fill:{color:fill}, align:'right' } },
+        { text: '+'+money(r.varRS), options:{ fontSize:10, bold:true, color:COR.vermelho, fill:{color:fill}, align:'right' } },
+        { text: pctStr(r.varPct), options:{ fontSize:10, bold:true, color:COR.vermelho, fill:{color:fill}, align:'right' } },
+        { text: r.poco?'Sim':'—', options:{ fontSize:10, fill:{color:fill}, align:'center', color: r.poco?COR.verdeEscuro:COR.cinzaTxt } },
+        { text: r.hidro?'Sim':'—', options:{ fontSize:10, fill:{color:fill}, align:'center', color: r.hidro?COR.verdeEscuro:COR.cinzaTxt } }
+      ]);
+    });
+    s6.addTable(dadosTabela, {
+      x:0.9, y:1.7, w:12.2,
+      colW:[1.6, 2.0, 2.0, 2.0, 1.5, 1.55, 1.55],
+      rowH:0.32,
+      fontFace:'Calibri',
+      border:{ pt:0.5, color:COR.cinzaClaro }
+    });
+    if(semJust.length > 12){
+      s6.addText(`Mostrando os 12 maiores. Total: ${semJust.length} lojas com aumento sem justificativa.`, {
+        x:0.9, y:6.3, w:12, h:0.4, fontSize:11, italic:true,
+        color:COR.cinzaTxt, fontFace:'Calibri', align:'center'
+      });
+    }
+  } else {
+    s6.addText('✓ Todas as lojas com aumento possuem justificativa registrada.',
+      { x:0.9, y:3.5, w:12, h:0.6, fontSize:18, italic:true, bold:true,
+        color:COR.verdeEscuro, fontFace:'Calibri', align:'center' });
+  }
+
+  // ══ SLIDE 7 ══ Próximos passos
+  const s7 = pres.addSlide();
+  s7.background = { color: COR.branco };
+  addBarra(s7, 'Próximos passos e tratativas');
+
+  const acoes = [
+    { titulo:'Investigar aumentos sem justificativa',
+      desc:`${semJust.length} loja(s) com elevação no consumo e sem justificativa cadastrada — alinhar com regional para tratativa imediata.`,
+      cor:COR.vermelho },
+    { titulo:'Replicar boas práticas das reduções',
+      desc:`${reducoes.length} loja(s) reduziram. Mapear ações tomadas e replicar nas demais unidades.`,
+      cor:COR.verde },
+    { titulo:'Validar hidrometração e poços',
+      desc:'Confirmar funcionamento dos hidrômetros e fontes alternativas (poços) nas lojas com maior variação.',
+      cor:COR.verdeEscuro }
+  ];
+  acoes.forEach((a,i) => {
+    const x = 1.0 + i*4.15;
+    s7.addShape(pres.ShapeType.roundRect, { x, y:2.0, w:3.6, h:3.8,
+      fill:{color:COR.cinzaClaro}, line:{type:'none'}, rectRadius:0.1 });
+    s7.addShape(pres.ShapeType.rect, { x, y:2.0, w:3.6, h:0.6,
+      fill:{color:a.cor}, line:{type:'none'} });
+    s7.addText(a.titulo, { x, y:2.0, w:3.6, h:0.6,
+      fontSize:14, bold:true, color:COR.branco, align:'center', valign:'middle', fontFace:'Calibri' });
+    s7.addText(a.desc, { x:x+0.3, y:2.9, w:3.0, h:2.7,
+      fontSize:13, color:COR.azulEscuro, fontFace:'Calibri', valign:'top' });
+  });
+
+  // ══ SLIDE 8 ══ Obrigado
+  const s8 = pres.addSlide();
+  s8.background = { color: COR.verde };
+  s8.addShape(pres.ShapeType.rect, { x:0, y:0, w:0.55, h:7.5, fill:{color:COR.verdeEscuro}, line:{type:'none'} });
+  s8.addText('OBRIGADO', {
+    x:0.9, y:2.8, w:12, h:1.5,
+    fontSize:72, bold:true, color:COR.branco, fontFace:'Calibri', align:'center'
+  });
+  s8.addText(`Comparativo · ${labelAnt} vs ${labelAtu}`, {
+    x:0.9, y:4.5, w:12, h:0.5,
+    fontSize:18, color:COR.branco, fontFace:'Calibri', align:'center', italic:true
+  });
+
+  // Salvar
+  const fileName = `Comparativo_Agua_${labelAnt}_vs_${labelAtu}_${ano}.pptx`;
+  pres.writeFile({ fileName }).then(() => {
+    setStatus('✓ Apresentação comparativa gerada: ' + fileName, 'ok');
   }).catch(err => {
     setStatus('❌ Erro ao gerar: ' + err.message, 'err');
     console.error(err);
